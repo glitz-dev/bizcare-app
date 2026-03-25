@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   PencilLine,
   ShoppingBag,
@@ -32,6 +33,7 @@ interface MenuItem {
   icon: React.ReactNode;
   active?: boolean;
   badge?: string;
+  href?: string;
 }
 
 interface SubSection {
@@ -69,7 +71,7 @@ const sections: Section[] = [
     subSectionLabelColor: "text-blue-700",
     subSectionDivider: "border-blue-100",
     items: [
-      { label: "Purchase Indent", icon: <PencilLine size={20} /> },
+      { label: "Purchase Indent", icon: <PencilLine size={20} />, href: "/Inventory/indentdetail" },
       { label: "Create Purchase Order", icon: <ShoppingBag size={20} /> },
       { label: "Process Order", icon: <ShoppingBag size={20} /> },
       { label: "Goods Receipt", icon: <ClipboardList size={20} /> },
@@ -201,14 +203,18 @@ function TileGrid({
   activeTile: string;
   hoverTile: string;
 }) {
+  const navigate = useNavigate();
+
   return (
     <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
       {items.map((item) => (
         <button
           key={item.label}
+          onClick={() => item.href && navigate(item.href)}
           className={cn(
             "relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl",
-            "border text-center cursor-pointer transition-all duration-150 shadow-sm min-w-0",
+            "border text-center transition-all duration-150 shadow-sm min-w-0",
+            item.href ? "cursor-pointer" : "cursor-default",
             item.active
               ? activeTile
               : cn("bg-white border-slate-100 text-slate-600", hoverTile)
@@ -272,7 +278,6 @@ function SectionAccordion({ section }: { section: Section }) {
       {/* Content */}
       {open && (
         <div className="px-6 pb-6">
-          {/* Flat items (no sub-sections) */}
           {section.items && (
             <TileGrid
               items={section.items}
@@ -281,16 +286,13 @@ function SectionAccordion({ section }: { section: Section }) {
             />
           )}
 
-          {/* Sub-sections (e.g. Reports) */}
           {section.subSections && (
             <div className="space-y-5">
               {section.subSections.map((sub, i) => (
                 <div key={sub.label}>
-                  {/* Divider between sub-sections */}
                   {i > 0 && (
                     <div className={cn("border-t mb-5", section.subSectionDivider)} />
                   )}
-                  {/* Sub-section label */}
                   <p className={cn("text-xs font-semibold uppercase tracking-widest mb-3", section.subSectionLabelColor)}>
                     {sub.label}
                   </p>

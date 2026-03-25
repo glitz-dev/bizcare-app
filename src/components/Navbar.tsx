@@ -44,7 +44,7 @@ export default function AppShell() {
     };
 
     return (
-        <div style={{ display: "flex", minHeight: "100vh", background: "#f0f4fa", fontFamily: "'DM Sans', 'Outfit', sans-serif" }}>
+        <div style={{ display: "flex", minHeight: "100vh", width: "100vw", maxWidth: "100vw", overflowX: "hidden", background: "#f0f4fa", fontFamily: "'DM Sans', 'Outfit', sans-serif" }}>
 
             {/* ── Sidebar ── */}
             <aside style={{
@@ -202,10 +202,13 @@ export default function AppShell() {
             <div style={{
                 marginLeft: expanded ? 220 : 68,
                 flex: 1,
+                minWidth: 0,
+                width: 0,
                 display: "flex",
                 flexDirection: "column",
                 transition: "margin-left 0.28s cubic-bezier(0.4,0,0.2,1)",
                 minHeight: "100vh",
+                overflowX: "hidden",
             }}>
                 {/* Top navbar */}
                 <header style={{
@@ -292,7 +295,7 @@ export default function AppShell() {
                 </header>
 
                 {/* Page content - Now uses React Router Outlet */}
-                <main style={{ flex: 1 }}>
+                <main style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
                     <Outlet />
                 </main>
             </div>
