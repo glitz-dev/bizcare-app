@@ -64,6 +64,16 @@ export interface Item {
     ItemCode: string | null;
 }
 
+/// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+const getCleanToken = (state: RootState): string | null => {
+    let token = state.auth.userData?.token || localStorage.getItem("token");
+    if (!token) return null;
+
+    token = token.replace(/^Bearer\s+/i, "").trim();
+    return token;
+};
+
 // ─── Async Thunk ──────────────────────────────────────────────────────────────
 
 export const fetchItems = createAsyncThunk<
@@ -73,25 +83,22 @@ export const fetchItems = createAsyncThunk<
 >(
     "procurement/fetchItems",
     async (_, { rejectWithValue, getState }) => {
-        const state = getState();
-        const token = state.auth.userData?.token || localStorage.getItem("token");
-
+        const token = getCleanToken(getState());
         if (!token) {
             return rejectWithValue("No authentication token found. Please login again.");
         }
 
-        try {
-            const url = new URL(
-                `https://erp.glitzit.com/service/api/Item/GetallItemsIndent/`
-            );
+        console.log("🔑 Sending Authorization (Items):", token); // ← debug
 
+        try {
+            const url = new URL("https://erp.glitzit.com/service/api/Item/GetallItemsIndent/");
             url.searchParams.set("searchStr", "");
 
             const response = await fetch(url.toString(), {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
+                    Authorization: token,        
                 },
             });
 
@@ -107,9 +114,7 @@ export const fetchItems = createAsyncThunk<
 
             return json.Server.Data as Item[];
         } catch (err: unknown) {
-            return rejectWithValue(
-                err instanceof Error ? err.message : "Network error"
-            );
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
         }
     }
 );
@@ -117,21 +122,17 @@ export const fetchItems = createAsyncThunk<
 export const fetchIndentOrders = createAsyncThunk<
     IndentOrder[],
     FetchIndentParams,
-    { state: RootState; rejectValue: string }   // ← Add this
+    { state: RootState; rejectValue: string }
 >(
     "procurement/fetchIndentOrders",
     async (params, { rejectWithValue, getState }) => {
-        const state = getState();
-        const token = state.auth.userData?.token || localStorage.getItem('token');
-
+        const token = getCleanToken(getState());
         if (!token) {
             return rejectWithValue("No authentication token found. Please login again.");
         }
 
         try {
-            const url = new URL(
-                "https://erp.glitzit.com/service/api/Indent/ReadAllIndentOrder"
-            );
+            const url = new URL("https://erp.glitzit.com/service/api/Indent/ReadAllIndentOrder");
 
             url.searchParams.set("From", params.from);
             url.searchParams.set("To", params.to);
@@ -143,8 +144,7 @@ export const fetchIndentOrders = createAsyncThunk<
             const response = await fetch(url.toString(), {
                 method: "GET",
                 headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
+                    Authorization: token,       
                 },
             });
 
@@ -160,9 +160,7 @@ export const fetchIndentOrders = createAsyncThunk<
 
             return json.Server.Data as IndentOrder[];
         } catch (err: unknown) {
-            return rejectWithValue(
-                err instanceof Error ? err.message : "Network error"
-            );
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
         }
     }
 );
