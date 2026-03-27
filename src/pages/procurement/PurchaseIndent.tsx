@@ -1,12 +1,15 @@
-// Updated PurchaseIndent.tsx (uses the 3 new components)
 "use client";
-
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/store";
 import {
   fetchIndentOrders,
   fetchItems,
+  fetchItemDetail,
+  clearItemDetails,
+  type ItemDetail,
+  fetchDocumentTypes,
+  fetchItemCategories,
 } from "@/store/features/inventory/procurement/procurementSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +32,7 @@ import {
   ExternalLink,
   ChevronLeft,
   Package,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,10 +59,7 @@ function newLineItem(id: number): LineItem {
 }
 
 function CreateIndentForm({ onClose }: { onClose: () => void }) {
-  const [document, setDocument] = useState("PURCHASE INDENT");
-  const [indentNo, setIndentNo] = useState("PI-59");
-  const [indentDate, setIndentDate] = useState("27-03-2026");
-  const [category, setCategory] = useState("");
+  const [indentDate, setIndentDate] = useState(getToday());
   const [subCategory, setSubCategory] = useState("");
   const [salesOrderNo, setSalesOrderNo] = useState("");
   const [requestedBy, setRequestedBy] = useState("");
@@ -66,6 +67,11 @@ function CreateIndentForm({ onClose }: { onClose: () => void }) {
   const [subDept, setSubDept] = useState("");
   const [remarks, setRemarks] = useState("");
   const [lines, setLines] = useState<LineItem[]>([newLineItem(1)]);
+  const dispatch = useDispatch<AppDispatch>();
+  const { documentTypes, itemCategories } = useSelector((state: RootState) => state.procurement);
+  const [document, setDocument] = useState(documentTypes[0]?.DocumentName);
+  const [indentNo, setIndentNo] = useState(`${documentTypes[0]?.Prefix}-${documentTypes[0]?.StartingNo}`);
+  const [category, setCategory] = useState("");
 
   const updateLine = useCallback((id: number, field: keyof LineItem, value: string) => {
     setLines((ls) => ls.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
@@ -94,6 +100,10 @@ function CreateIndentForm({ onClose }: { onClose: () => void }) {
     setRemarks("");
     setLines([newLineItem(1)]);
   };
+
+  useEffect(() => {
+    dispatch(fetchItemCategories({ companyId: 1, finYearId: 2024 }));
+  }, [])
 
   const inp = "h-8 text-xs border-slate-300 rounded focus-visible:ring-1 focus-visible:ring-[#004687]/40 bg-white";
   const sel = "h-8 text-xs border-slate-300 rounded focus:ring-1 focus:ring-[#004687]/40 bg-white";
@@ -140,14 +150,20 @@ function CreateIndentForm({ onClose }: { onClose: () => void }) {
             <div>
               <label className={lbl}>Category</label>
               <div className="relative">
-                <Select value={category} onValueChange={setCategory}>
+                <Select value={category}
+                  onValueChange={setCategory}>
                   <SelectTrigger className={sel}>
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="raw">Raw Material</SelectItem>
-                    <SelectItem value="packaging">Packaging</SelectItem>
-                    <SelectItem value="spare">Spare Parts</SelectItem>
+                    {itemCategories?.map((cat) => (
+                      <SelectItem
+                        key={cat.CategoryID}
+                        value={String(cat.CategoryID)}
+                      >
+                        {cat.CategoryName}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {category && (
@@ -169,10 +185,7 @@ function CreateIndentForm({ onClose }: { onClose: () => void }) {
                     <SelectValue placeholder="Select SubCategory" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="chemicals">Chemicals</SelectItem>
-                    <SelectItem value="plastics">Plastics</SelectItem>
-                    <SelectItem value="boxes">Boxes</SelectItem>
-                    <SelectItem value="mechanical">Mechanical</SelectItem>
+
                   </SelectContent>
                 </Select>
                 {subCategory && (
@@ -521,23 +534,145 @@ function CreateIndentForm({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── Item Details Modal ──────────────────────────────────────────────────────
+interface ItemDetailsModalProps {
+  open: boolean;
+  onClose: () => void;
+  indentNo: string;
+  items: ItemDetail[];
+  loading: boolean;
+  error: string | null;
+}
+
+function ItemDetailsModal({ open, onClose, indentNo, items, loading, error }: ItemDetailsModalProps) {
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl overflow-hidden"
+        style={{ minWidth: 560, maxWidth: 720, width: "90%" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div
+          className="flex items-center justify-between px-5 py-3"
+          style={{ background: "#004687" }}
+        >
+          <span className="text-white font-bold text-sm tracking-widest uppercase">
+            Item Details
+          </span>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white transition-colors rounded p-0.5"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <RefreshCcw size={22} className="text-slate-300 animate-spin" />
+              <p className="text-sm text-slate-400 font-medium">Loading item details…</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-1">
+              <p className="text-sm font-semibold text-red-500">Error: {error}</p>
+              <p className="text-xs text-slate-300">Please try again</p>
+            </div>
+          ) : (
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr style={{ background: "#004687" }}>
+                  {["#", "Item", "Indent Quantity", "Ordered Qty", "Landed Qty"].map((h, i) => (
+                    <th
+                      key={i}
+                      className="px-4 py-2.5 text-left text-white font-semibold text-[11px] uppercase tracking-wider whitespace-nowrap"
+                      style={{ borderRight: "1px solid rgba(255,255,255,0.15)" }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-slate-400 text-xs">
+                      No items found.
+                    </td>
+                  </tr>
+                ) : (
+                  items.map((row, idx) => (
+                    <tr
+                      key={idx}
+                      style={{ background: idx % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: "1px solid #e2e8f0" }}
+                    >
+                      <td className="px-4 py-2.5 text-slate-500 font-medium">{idx + 1}</td>
+                      <td className="px-4 py-2.5 text-slate-700 font-medium">{row.ItemName}</td>
+                      <td className="px-4 py-2.5 text-slate-600">{row.Quantity}</td>
+                      <td className="px-4 py-2.5 text-slate-600">{row.PurchaseOrdQty}</td>
+                      <td className="px-4 py-2.5 text-slate-600">{row.InpassQty}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Helper ────────────────────────────
 function toApiDate(ddmmyyyy: string): string {
   const [d, m, y] = ddmmyyyy.split("-");
   return `${y}-${m}-${d}`;
 }
 
+function getOneMonthAgo(): string {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);        // Subtract 1 month
+  return date.toISOString().split('T')[0];   // Returns YYYY-MM-DD
+}
+
+function getToday(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PurchaseIndent() {
   const dispatch = useDispatch<AppDispatch>();
   const { indentOrders, loading, error } = useSelector((state: RootState) => state.procurement);
-  const { items, itemsLoading } = useSelector((state: RootState) => state.procurement);
+  const { items, itemsLoading, itemDetails, itemDetailsLoading, itemDetailsError } = useSelector((state: RootState) => state.procurement);
 
-  const [fromDate, setFromDate] = useState("2026-03-22");
-  const [toDate, setToDate] = useState("2026-03-24");
+  const [fromDate, setFromDate] = useState(getOneMonthAgo());
+  const [toDate, setToDate] = useState(getToday());
   const [selectedItem, setSelectedItem] = useState<string>("");
   const [searched, setSearched] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // Item Details Modal state
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [itemModalIndentNo, setItemModalIndentNo] = useState("");
+
+  const handleViewItems = (indentID: number, indentNo: string) => {
+    setItemModalIndentNo(indentNo);
+    setItemModalOpen(true);
+    dispatch(fetchItemDetail(indentID));
+  };
+
+  const handleCloseModal = () => {
+    setItemModalOpen(false);
+    dispatch(clearItemDetails());
+  };
 
   const handleSearch = () => {
     dispatch(
@@ -546,6 +681,8 @@ export default function PurchaseIndent() {
         to: toDate,
         itemid: selectedItem ? Number(selectedItem) : 0,
         searchStr: "",
+        companyId: 1,
+        finYearId: 2,
       })
     );
     setSearched(true);
@@ -563,6 +700,8 @@ export default function PurchaseIndent() {
         from: fromDate,
         to: toDate,
         searchStr: "",
+        companyId: 1,
+        finYearId: 2,
       })
     );
   }, []);
@@ -589,13 +728,29 @@ export default function PurchaseIndent() {
   return (
     <TooltipProvider>
       <div className="bg-slate-50 font-sans">
+        <ItemDetailsModal
+          open={itemModalOpen}
+          onClose={handleCloseModal}
+          indentNo={itemModalIndentNo}
+          items={itemDetails}
+          loading={itemDetailsLoading}
+          error={itemDetailsError}
+        />
         <PageHeader
           title="Purchase Indent"
           subtitle="Bizcare ERP · Procurement"
           icon={<Package size={16} className="text-white" />}
           createButtonLabel="Create New Purchase Indent"
           showCreateButton={!showCreateForm}
-          onCreateClick={() => setShowCreateForm(true)}
+          onCreateClick={() => {
+            setShowCreateForm(true);
+            dispatch(fetchDocumentTypes(
+              {
+                companyId: 1,
+                finYearId: 2,
+              }
+            ));
+          }}
         />
 
         {showCreateForm ? (
@@ -621,6 +776,7 @@ export default function PurchaseIndent() {
               loading={loading}
               error={error}
               searched={searched}
+              onViewItems={handleViewItems}
             />
           </div>
         )}
