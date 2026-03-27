@@ -22,6 +22,7 @@ import {
   ChevronDown,
   RefreshCcw,
   ArrowUpDown,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,7 @@ interface DataTableProps {
   loading: boolean;
   error: string | null;
   searched: boolean;
+  onViewItems?: (indentID: number, indentNo: string) => void;
 }
 
 export function DataTable({
@@ -71,6 +73,7 @@ export function DataTable({
   loading,
   error,
   searched,
+  onViewItems,
 }: DataTableProps) {
   return (
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
@@ -138,7 +141,22 @@ export function DataTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 rounded-lg hover:bg-amber-50 text-amber-500"
+                            className="h-7 w-7 rounded-lg hover:bg-blue-50 text-blue-500 cursor-pointer"
+                            onClick={() => onViewItems?.(row.IndentID, row.IndentNo)}
+                          >
+                            <Eye size={13} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          View Items
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-lg hover:bg-amber-50 text-amber-500 cursor-pointer"
                           >
                             <Pencil size={13} />
                           </Button>
@@ -152,7 +170,7 @@ export function DataTable({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 rounded-lg hover:bg-red-50 text-red-500"
+                            className="h-7 w-7 rounded-lg hover:bg-red-50 text-red-500 cursor-pointer"
                           >
                             <Trash2 size={13} />
                           </Button>
