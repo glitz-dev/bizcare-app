@@ -12,6 +12,7 @@ import {
     fetchEmployees,
     fetchDepartments,
     saveIndent,
+    updateIndent,
     type ItemSpec,
     type SelectedIndent,
 } from "@/store/features/inventory/procurement/procurementSlice";
@@ -461,18 +462,18 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
     }, [itemCategories, category]);
 
     useEffect(() => {
-    if (category) {
-        dispatch(fetchItemSubCategories({ 
-            categoryId: Number(category), 
-            companyId: 1, 
-            finYearId: 2024 
-        }));
+        if (category) {
+            dispatch(fetchItemSubCategories({
+                categoryId: Number(category),
+                companyId: 1,
+                finYearId: 2024
+            }));
 
-        if (!isEditMode) {
-            setSubCategory("");
+            if (!isEditMode) {
+                setSubCategory("");
+            }
         }
-    }
-}, [category, dispatch, isEditMode]); 
+    }, [category, dispatch, isEditMode]);
 
     useEffect(() => {
         dispatch(fetchItemsForIndent({ itemCategoryID: 0, searchStr: "", companyId: 1, finYearId: 2024 }));
@@ -487,42 +488,41 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
     }, [dispatch]);
 
     useEffect(() => {
-    if (isEditMode && editData && editData.length > 0) {
-      const master = editData[0];
+        if (isEditMode && editData && editData.length > 0) {
+            const master = editData[0];
 
-      setIndentNo(master.IndentNo || "");
-      setIndentDate(
-        master.IndentDate ? master.IndentDate.split("T")[0] : getToday()
-      );
-      setDocument(master.DocumentName || "");
-      setCategory(String(master.CategoryID || ""));
-      setSubCategory(String(master.SubCategoryID || ""));
-      setDepartment(master.Department || "");
-      setRequestedBy(master.EmpName || "");
-      setRemarks(master.Remarks || "");
-      setSalesOrderId(master.SalesOrderID ?? null);
-      setSalesOrderNo(master.InvoiceNo || "");
-      setInvoiceNo(master.InvoiceNo || "");
+            setIndentNo(master.IndentNo || "");
+            setIndentDate(
+                master.IndentDate ? master.IndentDate.split("T")[0] : getToday()
+            );
+            setDocument(master.DocumentName || "");
+            setCategory(String(master.CategoryID || ""));
+            setSubCategory(String(master.SubCategoryID || ""));
+            setDepartment(master.Department || "");
+            setRequestedBy(master.EmpName || "");
+            setRemarks(master.Remarks || "");
+            setSalesOrderId(master.SalesOrderID ?? null);
+            setSalesOrderNo(master.InvoiceNo || "");
+            setInvoiceNo(master.InvoiceNo || "");
 
-      // Prefill all line items
-      const prefilledLines: LineItem[] = editData.map((detail, index) => ({
-        id: index + 1,
-        itemId: String(detail.ItemID),
-        itemCode: detail.ItemCode || undefined,
-        item: detail.ItemName,
-        spec: detail.Spec || "",
-        specs: [], // specs will load if user re-selects the item
-        unit: detail.Unit || "",
-        qty: String(detail.Quantity || 0),
-        reqDate: detail.RequiredDate ? detail.RequiredDate.split("T")[0] : getToday(),
-        stock: "0",
-        desc: detail.Description || "",
-        hsn: detail.Hsn || "",
-      }));
+            const prefilledLines: LineItem[] = editData.map((detail, index) => ({
+                id: index + 1,
+                itemId: String(detail.ItemID),
+                itemCode: detail.ItemCode || undefined,
+                item: detail.ItemName,
+                spec: detail.Spec || "",
+                specs: [],
+                unit: detail.Unit || "",
+                qty: String(detail.Quantity || 0),
+                reqDate: detail.RequiredDate ? detail.RequiredDate.split("T")[0] : getToday(),
+                stock: "0",
+                desc: detail.Description || "",
+                hsn: detail.Hsn || "",
+            }));
 
-      setLines(prefilledLines.length > 0 ? prefilledLines : [newLineItem(1)]);
-    }
-  }, [isEditMode, editData]);
+            setLines(prefilledLines.length > 0 ? prefilledLines : [newLineItem(1)]);
+        }
+    }, [isEditMode, editData]);
 
     const handleItemSelect = useCallback(async (lineId: number, itemId: number) => {
         if (!itemId) return;
@@ -588,7 +588,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
             };
         });
 
-        const payload = {
+        const basePayload = {
             CategoryID: Number(category),
             CategoryName: selectedCat.CategoryName,
             Department: department,
@@ -609,36 +609,44 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
             SalesOrderID: salesOrderId ?? null,
         };
 
+        // Add IndentID only for Update
+        const payload = isEditMode && editData?.[0]?.IndentID
+            ? { ...basePayload, IndentID: editData[0].IndentID }
+            : basePayload;
+
         try {
-            const result = await dispatch(saveIndent({ payload })).unwrap();
+            const result = await dispatch(
+                isEditMode
+                    ? updateIndent({ payload, companyId: 1, finYearId: 2 })
+                    : saveIndent({ payload, companyId: 1, finYearId: 2 })
+            ).unwrap();
+
             const action = isEditMode ? "updated" : "saved";
-            toast.success("Purchase Indent saved successfully!", {
-                description: `Indent No: ${result.Server.MessageId}`,
+            toast.success(`Purchase Indent ${action} successfully!`, {
+                description: `Indent No: ${result.Server.MessageId || indentNo}`,
                 duration: 5000,
                 position: "bottom-right",
-                style: {
-                    background: "green",
-                    color: "white",
-                },
+                style: { background: "green", color: "white" },
             });
-            onSuccess?.();
-            onClose();
+
+            // ← This is what redirects you back to the Indent List
+            onSuccess?.();   // refreshes the list
+            onClose();       // closes the form and shows the list
         } catch (err: any) {
-            console.error("Save error:", err);
-            toast.error("Failed to save Purchase Indent", {
+            console.error("Save/Update error:", err);
+            toast.error(`Failed to ${isEditMode ? "update" : "save"} Purchase Indent`, {
                 description: err?.message || "Please try again.",
                 duration: 6000,
-                style: {
-                    background: "red",
-                    color: "white",
-                },
+                style: { background: "red", color: "white" },
             });
         }
     }, [
         document, indentNo, indentDate, category, subCategory, department, requestedBy,
         salesOrderNo, lines, netQty, documentTypes, employees, departments,
         itemCategories, itemSubCategories, dispatch, onClose, onSuccess,
+        isEditMode, editData,
     ]);
+
     const handleClear = () => {
         const d = documentTypes.find((d) => d.SetDefault) || documentTypes[0];
         setDocument(d?.DocumentName || "PURCHASE INDENT");
@@ -994,7 +1002,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                                 </>
                             ) : (
                                 <>
-                                    <Save size={12} /> 
+                                    <Save size={12} />
                                     {isEditMode ? "Update Indent" : "Submit Indent"}
                                 </>
                             )}

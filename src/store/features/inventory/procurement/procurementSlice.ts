@@ -1127,6 +1127,51 @@ export const fetchSelectedIndent = createAsyncThunk<
     }
 );
 
+export const updateIndent = createAsyncThunk<
+    SaveIndentResponse,
+    { payload: CreateIndentPayload; companyId?: number; finYearId?: number },
+    { state: RootState; rejectWithValue: string }
+>(
+    "procurement/updateIndent",
+    async (arg, { rejectWithValue, getState }) => {
+        const { payload, companyId, finYearId } = arg;
+        const token = getCleanToken(getState());
+        if (!token) {
+            return rejectWithValue("No authentication token found. Please login again.");
+        }
+
+        try {
+            const url = "https://erp.glitzit.com/service/api/Indent/UpdateIndentOrder";
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json, text/plain, */*",
+                    Authorization: token,
+                    "x-company-id": String(companyId || 1),
+                    "x-finyear-id": String(finYearId || 2),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                return rejectWithValue(`HTTP error: ${response.status}`);
+            }
+
+            const json = await response.json();
+
+            if (!json?.Server?.Success) {
+                return rejectWithValue(json?.Server?.Message ?? "Failed to update purchase indent");
+            }
+
+            return json as SaveIndentResponse;
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const procurementSlice = createSlice({
@@ -1368,6 +1413,19 @@ const procurementSlice = createSlice({
                 state.selectedIndentLoading = false;
                 state.selectedIndentError = action.payload ?? "Failed to load selected indent";
             })
+            .addCase(updateIndent.pending, (state) => {
+                state.saveIndentLoading = true;
+                state.saveIndentError = null;
+            })
+            .addCase(updateIndent.fulfilled, (state) => {
+                state.saveIndentLoading = false;
+            })
+            .addCase(updateIndent.rejected, (state, action) => {
+                state.saveIndentLoading = false;
+                state.saveIndentError = typeof action.payload === 'string'
+                    ? action.payload
+                    : "Failed to update purchase indent";
+            });
     },
 });
 
