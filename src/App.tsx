@@ -7,10 +7,12 @@ import Accounts from './pages/Accounts'
 import SettingsPage from './pages/Settings'
 import UserPage from './pages/UserPage'
 import PurchaseIndent from './pages/procurement/PurchaseIndent'
+import { Toaster } from './components/ui/sonner'
 
 const App = () => {
   return (
     <BrowserRouter>
+      <Toaster />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/login" />} />
