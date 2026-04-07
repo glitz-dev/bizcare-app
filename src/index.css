@@ -115,6 +115,19 @@
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
 }
+/* Force react-data-grid to always use LIGHT theme */
+.rdg {
+  --rdg-color: #334155 !important;
+  --rdg-background-color: #ffffff !important;
+  --rdg-header-background-color: #f8fafc !important;
+  --rdg-row-background-color: #ffffff !important;
+  --rdg-even-row-background-color: #f8fafc !important;
+  --rdg-row-hover-background-color: #eff6ff !important;
+  --rdg-border-color: #e2e8f0 !important;
+  --rdg-header-border-color: #e2e8f0 !important;
+  --rdg-selection-color: #004687 !important;
+  color-scheme: light !important;
+}
 
 @layer base {
   * {

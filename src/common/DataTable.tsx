@@ -1,14 +1,9 @@
-// DataTable.tsx
 "use client";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataGrid, type Column } from "react-data-grid";
+import "react-data-grid/lib/styles.css";
+import { useState, useMemo } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,27 +11,21 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Pencil,
-  Trash2,
-  ChevronDown,
-  RefreshCcw,
-  ArrowUpDown,
-  Eye,
-} from "lucide-react";
+import { Pencil, Trash2, Eye, RefreshCcw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ─── Status Badge ─────────────────────────────────────────────────────────────
 const statusStyles: Record<string, string> = {
-  Pending: "bg-amber-50 text-amber-700 border-amber-200",
-  Approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Rejected: "bg-red-50 text-red-600 border-red-200",
-  Ordered: "bg-blue-50 text-blue-700 border-blue-200",
-  Created: "bg-blue-50 text-blue-700 border-blue-200",
-  Partial: "bg-violet-50 text-violet-700 border-violet-200",
+  Pending:   "bg-amber-50 text-amber-700 border-amber-200",
+  Approved:  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Rejected:  "bg-red-50 text-red-600 border-red-200",
+  Ordered:   "bg-blue-50 text-blue-700 border-blue-200",
+  Created:   "bg-blue-50 text-blue-700 border-blue-200",
+  Partial:   "bg-violet-50 text-violet-700 border-violet-200",
   Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
-function StatusBadge({ label }: { label: string }) {
+export function StatusBadge({ label }: { label: string }) {
   return (
     <span
       className={cn(
@@ -49,223 +38,214 @@ function StatusBadge({ label }: { label: string }) {
   );
 }
 
-function ColFilter() {
+// ─── Actions Cell ─────────────────────────────────────────────────────────────
+export function ActionsCell({
+  row,
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  row: any;
+  onView?: (row: any) => void;
+  onEdit?: (row: any) => void;
+  onDelete?: (row: any) => void;
+}) {
   return (
-    <Input
-      placeholder="Filter..."
-      className="h-7 text-[11px] rounded-md border-slate-200 bg-slate-50 placeholder:text-slate-300 focus-visible:ring-1 focus-visible:ring-[#004687]/30"
-    />
+    <div className="flex items-center gap-1">
+      {onView && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-lg hover:bg-blue-50 text-blue-500 cursor-pointer"
+              onClick={() => onView(row)}
+            >
+              <Eye size={13} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">View Items</TooltipContent>
+        </Tooltip>
+      )}
+      {onEdit && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-lg hover:bg-amber-50 text-amber-500 cursor-pointer"
+              onClick={() => onEdit(row)}
+            >
+              <Pencil size={13} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">Edit</TooltipContent>
+        </Tooltip>
+      )}
+      {onDelete && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-lg hover:bg-red-50 text-red-500 cursor-pointer"
+              onClick={() => onDelete(row)}
+            >
+              <Trash2 size={13} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">Delete</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
   );
 }
 
-interface DataTableProps {
-  columns: string[];
-  indentOrders: any[];
-  loading: boolean;
-  error: string | null;
-  searched: boolean;
-  onViewItems?: (indentID: number, indentNo: string) => void;
+// ─── Filter Header ────────────────────────────────────────────────────────────
+export function FilterHeader({
+  column,
+  filterValue,
+  onFilterChange,
+}: {
+  column: Column<any>;
+  filterValue: string;
+  onFilterChange: (key: string, value: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1 py-1 px-2">
+      <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+        {column.name as string}
+      </div>
+      <Input
+        placeholder="Filter..."
+        value={filterValue}
+        onChange={(e) => onFilterChange(column.key as string, e.target.value)}
+        className="h-6 text-[10px] border-slate-200 bg-slate-50 placeholder:text-slate-300 focus-visible:ring-1 focus-visible:ring-[#004687]/30"
+      />
+    </div>
+  );
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+export interface DataTableProps {
+  columns: Column<any>[];
+  rows: any[];
+  rowKey: string;
+  loading?: boolean;
+  error?: string | null;
+  loadingLabel?: string;
+  rowHeight?: number;
+  headerRowHeight?: number;
+}
+
+// ─── DataTable ────────────────────────────────────────────────────────────────
 export function DataTable({
   columns,
-  indentOrders,
-  loading,
-  error,
-  searched,
-  onViewItems,
+  rows,
+  rowKey,
+  loading = false,
+  error = null,
+  loadingLabel = "Loading…",
+  rowHeight = 36,
+  headerRowHeight = 58,
 }: DataTableProps) {
-  return (
-    <div className="bg-white rounded-xl border border-slate-100 shadow-sm">
-      <div style={{ overflowX: "auto" }}>
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50 hover:bg-slate-50">
-              {columns.map((col) => (
-                <TableHead
-                  key={col}
-                  className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap px-3 py-2.5 first:pl-4"
-                >
-                  <div className="flex items-center gap-1">
-                    {col}
-                    {col !== "Actions" && (
-                      <ChevronDown size={10} className="text-slate-300" />
-                    )}
-                  </div>
-                </TableHead>
-              ))}
-            </TableRow>
-            <TableRow className="hover:bg-transparent border-b border-slate-100">
-              {columns.map((col) => (
-                <TableHead key={col} className="px-2 py-1.5 first:pl-3">
-                  {col !== "Actions" ? <ColFilter /> : null}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
+  const [filters, setFilters] = useState<Record<string, string>>({});
 
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-14">
-                  <div className="flex flex-col items-center gap-2">
-                    <RefreshCcw size={22} className="text-slate-300 animate-spin" />
-                    <p className="text-sm font-medium text-slate-400">
-                      Loading indent orders…
-                    </p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : error ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-14">
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-sm font-semibold text-red-500">Error: {error}</p>
-                    <p className="text-xs text-slate-300">Please try again</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : indentOrders.length > 0 ? (
-              indentOrders.map((row, i) => (
-                <TableRow
-                  key={row.IndentID}
-                  className={cn(
-                    "hover:bg-blue-50/40 transition-colors",
-                    i % 2 === 0 ? "bg-white" : "bg-slate-50/40"
-                  )}
-                >
-                  <TableCell className="px-3 py-2 pl-4">
-                    <div className="flex items-center gap-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded-lg hover:bg-blue-50 text-blue-500 cursor-pointer"
-                            onClick={() => onViewItems?.(row.IndentID, row.IndentNo)}
-                          >
-                            <Eye size={13} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          View Items
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded-lg hover:bg-amber-50 text-amber-500 cursor-pointer"
-                          >
-                            <Pencil size={13} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          Edit
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded-lg hover:bg-red-50 text-red-500 cursor-pointer"
-                          >
-                            <Trash2 size={13} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          Delete
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-3 py-2 whitespace-nowrap">
-                    <span className="text-[#004687] font-semibold text-xs">
-                      {row.IndentNo}
-                    </span>
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.IndentDate}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.DocumentName}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 font-medium">
-                    {row.TotalQuantity}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.CategoryName}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.SubCategoryName}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-500 italic whitespace-nowrap">
-                    {row.Remarks ?? "—"}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.EmpName}
-                  </TableCell>
-                  <TableCell className="px-3 py-2">
-                    <StatusBadge label={row.Approve} />
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.ApprovedBY ?? "—"}
-                  </TableCell>
-                  <TableCell className="px-3 py-2">
-                    <StatusBadge label={row.POStatus} />
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.SalesOrderNo ?? "—"}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.CreatedDate}
-                  </TableCell>
-                  <TableCell className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                    {row.DepartmentName}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="text-center py-14">
-                  <div className="flex flex-col items-center gap-2">
-                    <ArrowUpDown size={26} className="text-slate-200" />
-                    <p className="text-sm font-medium text-slate-400">No records found</p>
-                    <p className="text-xs text-slate-300">
-                      Adjust your filters and search again
-                    </p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+  const handleFilterChange = (key: string, value: string) =>
+    setFilters((prev) => ({ ...prev, [key]: value }));
 
-      {/* Pagination */}
-      {searched && indentOrders.length > 0 && (
-        <div className="px-4 py-2.5 border-t border-slate-100 flex items-center justify-between">
-          <p className="text-[11px] text-slate-400">
-            Showing <span className="font-semibold text-slate-600">1–{indentOrders.length}</span> of{" "}
-            <span className="font-semibold text-slate-600">{indentOrders.length}</span> results
-          </p>
-          <div className="flex items-center gap-1.5">
-            {[1, 2, 3].map((p) => (
-              <button
-                key={p}
-                className={cn(
-                  "w-7 h-7 rounded-lg text-xs font-semibold transition-colors",
-                  p === 1 ? "bg-[#004687] text-white" : "text-slate-400 hover:bg-slate-100"
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+  const clearFilters = () => setFilters({});
+
+  const columnsWithFilters: Column<any>[] = useMemo(
+    () =>
+      columns.map((col) => {
+        if (!col.renderHeaderCell) return col;
+        const original = col.renderHeaderCell;
+        return {
+          ...col,
+          renderHeaderCell: (props: any) =>
+            original({
+              ...props,
+              filterValue: filters[col.key as string] ?? "",
+              onFilterChange: handleFilterChange,
+            }),
+        };
+      }),
+    [columns, filters]
+  );
+
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((row) =>
+        Object.entries(filters).every(([key, val]) => {
+          if (!val) return true;
+          return String(row[key] ?? "").toLowerCase().includes(val.toLowerCase());
+        })
+      ),
+    [rows, filters]
+  );
+
+  // Memoized rowClass for performance + !important to beat react-data-grid styles
+  const getRowClass = useMemo(() => {
+    return (row: any, rowIndex: number) => (rowIndex % 2 === 1 ? "!bg-blue-50" : "");
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm min-h-[400px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <RefreshCcw size={22} className="text-slate-300 animate-spin" />
+          <p className="text-sm font-medium text-slate-400">{loadingLabel}</p>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-sm font-semibold text-red-500">Error: {error}</p>
+          <p className="text-xs text-slate-300 mt-1">Please try again</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <DataGrid
+        columns={columnsWithFilters}
+        rows={filteredRows}
+        rowKeyGetter={(row: any) => row[rowKey]}
+        className="rdg"
+        style={{ height: "auto" }}
+        rowHeight={rowHeight}
+        headerRowHeight={headerRowHeight}
+        enableVirtualization
+        rowClass={getRowClass}
+      />
+
+      {/* Footer */}
+      <div className="px-4 py-2.5 border-t border-slate-100 flex items-center justify-between">
+        <p className="text-[11px] text-slate-400">
+          Showing{" "}
+          <span className="font-semibold text-slate-600">1–{filteredRows.length}</span>{" "}
+          of{" "}
+          <span className="font-semibold text-slate-600">{rows.length}</span> results
+        </p>
+        {Object.values(filters).some((v) => v) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-7 text-xs flex items-center gap-1 text-slate-500 hover:text-slate-700"
+          >
+            <X size={13} />
+            Clear Filters
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
