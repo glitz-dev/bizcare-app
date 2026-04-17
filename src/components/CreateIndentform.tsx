@@ -307,11 +307,10 @@ const LineItemRow = memo(
             label: i.ItemName,
         }));
 
-        // FIXED: Use SpecID as key (unique) + Spec as display value
         const specOptions: ComboboxOption[] = (line.specs ?? []).map((s) => ({
-            value: s.Spec,           // what gets selected & stored
+            value: s.Spec,           
             label: s.Spec,
-            key: String(s.SpecID),   // unique key for React
+            key: String(s.SpecID),   
         }));
 
         return (
@@ -477,6 +476,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
 
     useEffect(() => {
         dispatch(fetchItemsForIndent({ itemCategoryID: 0, searchStr: "", companyId: 1, finYearId: 2024 }));
+        // dispatch(fetchItemStock({ itemId: 0, companyId: 1, finYearId: 2024 }));
     }, [dispatch]);
 
     useEffect(() => {
