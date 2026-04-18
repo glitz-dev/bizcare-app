@@ -219,7 +219,7 @@ export function DataTable({
         rows={filteredRows}
         rowKeyGetter={(row: any) => row[rowKey]}
         className="rdg"
-        style={{ height: "auto" }}
+        style={{ height: "auto", width: "100%" }}
         rowHeight={rowHeight}
         headerRowHeight={headerRowHeight}
         enableVirtualization

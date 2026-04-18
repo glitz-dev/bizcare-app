@@ -627,7 +627,7 @@ export const fetchItemCategories = createAsyncThunk<
 
         try {
             const url = new URL("https://erp.glitzit.com/service/api/ItemCategory/GetItemCategorysStartWith");
-            url.searchParams.set("startWith", "");   // empty as per your example
+            url.searchParams.set("startWith", "");  
 
             const response = await fetch(url.toString(), {
                 method: "GET",

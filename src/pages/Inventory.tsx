@@ -72,7 +72,7 @@ const sections: Section[] = [
     subSectionDivider: "border-blue-100",
     items: [
       { label: "Purchase Indent", icon: <PencilLine size={20} />, href: "/Inventory/indentdetail" },
-      { label: "Create Purchase Order", icon: <ShoppingBag size={20} /> },
+      { label: "Create Purchase Order", icon: <ShoppingBag size={20} />, href: "/Inventory/purchase-order" },
       { label: "Process Order", icon: <ShoppingBag size={20} /> },
       { label: "Goods Receipt", icon: <ClipboardList size={20} /> },
       { label: "Purchase", icon: <ShoppingCart size={20} /> },
