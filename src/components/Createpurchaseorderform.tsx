@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { AppDispatch, RootState } from "@/store";
 import {
     X,
@@ -44,6 +45,16 @@ import {
     RemainingIndent,
     SelectedIndentItem,
     SelectedIndentForPR,
+    fetchItemDetailsForOpeningStock,
+    clearSelectedItemForPR,
+    SelectedItemForPR,
+    savePurchaseOrder,
+    updatePurchaseOrder,
+    fetchSelectedPO,
+    clearSelectedPO,
+    fetchItemUnits,
+    type ItemUnit,
+    SelectedPO,
 } from "@/store/features/inventory/procurement/purchaseOrderSlice";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -51,6 +62,7 @@ import {
     fetchItemSubCategories,
 } from "@/store/features/inventory/procurement/procurementSlice";
 import { toast } from "sonner";
+import POIndentTable from "./POIndentTable";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -79,25 +91,26 @@ const INDENT_DATA: Record<string, IndentItem[]> = {
     ],
 };
 
+
 // ─── Complete POItem interface matching all 36 table columns ─────────────────
 
 interface POItem {
     id: number;
     // Column 2–5
     barcode: string;
-    itemCode: string;
+    ItemCode: string;
     Hsn: string;
-    item: string;
+    ItemName: string;
     spec: string;
     // Column 6–9
-    indQty: number;
-    qty: number;
+    IndentQty: number;
+    Quantity: number;
     billQty: number;
-    pRate: number;
+    PurchaseRate: number;
     // Column 10–13
-    reqDate: string;
-    pUnit: string;
-    billUnit: string;
+    RequiredDate: string;
+    Unit: string;
+    BillUnit: string;
     um: string;
     // Column 14–15
     sales: string;
@@ -105,13 +118,13 @@ interface POItem {
     // Column 16–19 (some are computed)
     netPriceRate: number;
     discountPercent: number;
-    discountAmount: number;   // computed: (qty * netPriceRate) * discountPercent / 100
-    grossAmount: number;      // computed: qty * netPriceRate - discountAmount
+    discountAmount: number;
+    grossAmount: number;
     // Column 20–23
     gstCategory: string;
     taxPercent: number;
-    taxRate: number;          // computed: grossAmount * taxPercent / 100
-    netAmount: number;        // computed: grossAmount + taxRate
+    taxRate: number;
+    netAmount: number;
     // Column 24–27 (tax split percentages)
     cgstPercent: number;
     sgstPercent: number;
@@ -121,20 +134,26 @@ interface POItem {
     vat: number;
     cessPercent: number;
     // Column 31–36 (computed amounts)
-    sgstAmount: number;       // computed: grossAmount * sgstPercent / 100
-    cgstAmount: number;       // computed: grossAmount * cgstPercent / 100
-    igstAmount: number;       // computed: grossAmount * igstPercent / 100
-    utgstAmount: number;      // computed: grossAmount * utgstPercent / 100
-    vatAmount: number;        // computed: grossAmount * vat / 100
-    cessAmount: number;       // computed: grossAmount * cessPercent / 100
+    sgstAmount: number;
+    cgstAmount: number;
+    igstAmount: number;
+    utgstAmount: number;
+    vatAmount: number;
+    cessAmount: number;
     // Column 36
     previousPurchases: string;
+    ItemID: number;
+    // ── Indent linkage fields (FIX: stored per-item so multi-indent works) ──
+    IndentDetailID: number | null;
+    IndentMasterID: number | null;
+    IndentNo: string;
+    BatchID: number;
 }
 
 // ─── Helper: derive computed fields ──────────────────────────────────────────
 
 function computeItem(item: POItem): POItem {
-    const baseAmount = (item.qty || 0) * (item.netPriceRate || 0);
+    const baseAmount = (item.Quantity || 0) * (item.netPriceRate || 0);
     const discountAmount = baseAmount * ((item.discountPercent || 0) / 100);
     const grossAmount = baseAmount - discountAmount;
     const taxRate = grossAmount * ((item.taxPercent || 0) / 100);
@@ -308,6 +327,91 @@ function ReadonlyCell({
     );
 }
 
+function BillUnitCell({
+    value,
+    itemUnits,
+    onChange,
+}: {
+    value: string;
+    itemUnits: ItemUnit[];
+    onChange: (v: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState(value);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+    useEffect(() => {
+        setSearch(value);
+    }, [value]);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (inputRef.current && !inputRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    const handleFocus = () => {
+        if (inputRef.current) {
+            const rect = inputRef.current.getBoundingClientRect();
+            setDropdownStyle({
+                position: "fixed",
+                top: rect.bottom + 2,
+                left: rect.left,
+                width: rect.width < 140 ? 140 : rect.width,
+                zIndex: 9999,
+            });
+        }
+        setOpen(true);
+    };
+
+    const filtered = itemUnits.filter((u) =>
+        u.ItemUnitName.toLowerCase().includes(search.toLowerCase())
+    );
+
+    return (
+        <td className="px-1 py-1 min-w-[90px]">
+            <input
+                ref={inputRef}
+                className="w-full h-7 px-2 border border-slate-200 rounded text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                placeholder="Bill Unit"
+                value={search}
+                onChange={(e) => {
+                    setSearch(e.target.value);
+                    setOpen(true);
+                }}
+                onFocus={handleFocus}
+            />
+            {open && filtered.length > 0 && createPortal(
+                <div
+                    style={dropdownStyle}
+                    className="bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                >
+                    {filtered.map((u) => (
+                        <div
+                            key={u.UnitID}
+                            className="px-3 py-1.5 text-[12px] text-slate-700 hover:bg-sky-50 cursor-pointer"
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                onChange(u.ItemUnitName);
+                                setSearch(u.ItemUnitName);
+                                setOpen(false);
+                            }}
+                        >
+                            {u.ItemUnitName}
+                        </div>
+                    ))}
+                </div>,
+                document.body
+            )}
+        </td>
+    );
+}
+
 // ─── Table header definitions ─────────────────────────────────────────────────
 
 const PO_COLUMNS: { label: string; required?: boolean }[] = [
@@ -356,11 +460,13 @@ const PO_COLUMNS: { label: string; required?: boolean }[] = [
 interface CreatePurchaseOrderFormProps {
     onClose: () => void;
     onSubmit?: (data: any) => void;
+    editData?: SelectedPO | null;
 }
 
 export default function CreatePurchaseOrderForm({
     onClose,
     onSubmit,
+    editData,
 }: CreatePurchaseOrderFormProps) {
     const [openSections, setOpenSections] = useState<string[]>([
         "general",
@@ -385,48 +491,54 @@ export default function CreatePurchaseOrderForm({
         remainingIndentsError,
         selectedIndentItemsLoading,
         selectedIndentItemsError,
+        selectedItemForPR,
+        selectedIndentForPR,
+        selectedItemForPRLoading,
+        itemUnits,
     } = useSelector((state: RootState) => state.purchaseOrder);
 
     const { itemCategories, itemSubCategories } = useSelector(
         (state: RootState) => state.procurement
     );
 
+    const isEditMode = !!editData;
+
     // General fields
-    const [orderNo] = useState("LPO-64");
-    const [orderDate] = useState(
-        new Date().toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        })
+    const [orderNo, setOrderNo] = useState(editData?.OrderNo ?? "LPO-64");
+
+    const [orderDate] = useState(() =>
+        editData?.OrderDate
+            ? editData.OrderDate.split("T")[0]
+            : new Date().toISOString().split("T")[0]
     );
+
     const [invoiceTaxType, setInvoiceTaxType] = useState(
-        invoiceTaxTypes[0]?.InvoiceTaxType || ""
+        editData?.InvoiceTaxType ?? invoiceTaxTypes[0]?.InvoiceTaxType ?? ""
     );
-    const [store, setStore] = useState(defaultStore[0]?.StoreName || "");
-    const [supplier, setSupplier] = useState("");
-    const [currency, setCurrency] = useState(
-        baseCurrency[0]?.Currency || "Currency not specified"
-    );
-    const [exchangeRate, setExchangeRate] = useState(
-        purchaseOrderDocuments[0]?.ExchRate || 0
-    );
-    const [category, setCategory] = useState("");
-    const [subCategory, setSubCategory] = useState("");
+
+    const [store, setStore] = useState(editData?.StoreName ?? defaultStore[0]?.StoreName ?? "");
+    const [supplier, setSupplier] = useState(editData?.SupplierName ?? "");
+    const [currency, setCurrency] = useState(editData?.Currency ?? baseCurrency[0]?.Currency ?? "Currency not specified");
+    const [exchangeRate, setExchangeRate] = useState(editData?.ExRate ?? purchaseOrderDocuments[0]?.ExchRate ?? 0);
+    const [category, setCategory] = useState(editData?.CategoryName ?? "");
+    const [subCategory, setSubCategory] = useState(editData?.SubCategoryName ?? "");
     const [indentNo, setIndentNo] = useState("");
     const [roundOff, setRoundOff] = useState(false);
     const dispatch = useDispatch<AppDispatch>();
 
     // Forwarding Details state
-    const [expectedDate, setExpectedDate] = useState("");
+    const [expectedDate, setExpectedDate] = useState(
+        editData?.ExpectedDate ? editData.ExpectedDate.split("T")[0] : ""
+    );
     const [supplierQualityIndexCE, setSupplierQualityIndexCE] = useState(0);
     const [supplierQualityIndexPC, setSupplierQualityIndexPC] = useState(10);
-    const [attention, setAttention] = useState("");
-    const [shippingAddress, setShippingAddress] = useState("");
-    const [billingAddress, setBillingAddress] = useState("");
-    const [remarks, setRemarks] = useState("");
-    const [conditions, setConditions] = useState("");
-    const [completed, setCompleted] = useState(false);
+    const [attention, setAttention] = useState(editData?.Attention ?? "");
+    const [shippingAddress, setShippingAddress] = useState(editData?.ShippingAddress ?? "");
+    const [billingAddress, setBillingAddress] = useState(editData?.BillingAddress ?? "");
+    const [remarks, setRemarks] = useState(editData?.Remarks ?? "");
+    const [conditions, setConditions] = useState(editData?.Conditions ?? "");
+    const [completed, setCompleted] = useState(editData?.Completed ?? false);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         dispatch(fetchPurchaseOrderDocuments());
@@ -452,6 +564,8 @@ export default function CreatePurchaseOrderForm({
         dispatch(fetchAllSuppliers());
         dispatch(fetchItemCategories({ companyId: 1, finYearId: 2 }));
         dispatch(fetchRemainingIndentsForPO());
+        dispatch(fetchItemDetailsForOpeningStock());
+        dispatch(fetchItemUnits());
     }, [dispatch]);
 
     useEffect(() => {
@@ -470,6 +584,63 @@ export default function CreatePurchaseOrderForm({
             );
         }
     }, [category, dispatch, itemCategories]);
+
+    useEffect(() => {
+        if (itemCategories.length > 0 && !category) {
+            const firstCategoryName = itemCategories[0].CategoryName;
+            setCategory(firstCategoryName);
+        }
+    }, [itemCategories, category]);
+
+
+    // Auto-add item to main PO table when fetchSelectedItemForPR returns data
+    const buildItemsFromEditData = (po: SelectedPO): POItem[] =>
+        po.LstPurchaseOrderDetails.map((d, idx) =>
+            computeItem({
+                id: Date.now() + idx,
+                barcode: d.BarCode ?? "",
+                ItemCode: d.ItemCode ?? "",
+                Hsn: d.Hsn ?? "",
+                ItemName: d.ItemName ?? "",
+                spec: d.Spec ?? "",
+                IndentQty: d.IndentQty ?? 0,
+                Quantity: d.Quantity ?? 0,
+                billQty: d.BillQty ?? 0,
+                PurchaseRate: d.PurchaseRate ?? 0,
+                RequiredDate: d.RequiredDate ? d.RequiredDate.split("T")[0] : "",
+                Unit: d.Unit ?? "",
+                BillUnit: d.BillUnit ?? "",
+                um: d.Unit ?? "",
+                sales: String(d.SalesRate ?? ""),
+                mrp: d.Mrp ?? 0,
+                netPriceRate: d.NetPRate ?? 0,
+                discountPercent: d.DiscountPercentage ?? 0,
+                discountAmount: d.DiscountAmount ?? 0,
+                grossAmount: d.Amount ?? 0,
+                gstCategory: d.GstCategoryDesc ?? "",
+                taxPercent: d.TaxPercentage ?? 0,
+                taxRate: d.TaxRate ?? 0,
+                netAmount: d.Amount ?? 0,
+                cgstPercent: d.CGSTPer ?? 0,
+                sgstPercent: d.SGSTPer ?? 0,
+                igstPercent: d.IGSTPer ?? 0,
+                utgstPercent: d.UTGSTPer ?? 0,
+                vat: d.VATPer ?? 0,
+                cessPercent: d.CESSPer ?? 0,
+                sgstAmount: d.SGSTAmt ?? 0,
+                cgstAmount: d.CGSTAmt ?? 0,
+                igstAmount: d.IGSTAmt ?? 0,
+                utgstAmount: d.UTGSTAmt ?? 0,
+                vatAmount: d.VATAmt ?? 0,
+                cessAmount: d.CESSAmt ?? 0,
+                previousPurchases: "",
+                ItemID: d.ItemID ?? 0,
+                IndentDetailID: d.IndentDetailID ?? null,
+                IndentMasterID: d.IndentMasterID ?? null,
+                IndentNo: "",
+                BatchID: d.BatchID ?? 0,
+            })
+        );
 
     const [checkedIndentIds, setCheckedIndentIds] = useState<Set<number>>(
         new Set()
@@ -501,6 +672,7 @@ export default function CreatePurchaseOrderForm({
     const handleSelectIndentItem = (row: RemainingIndent) => {
         toast.success(`Indent ${row.IndentNo} added to PO`);
     };
+
 
     // ─── Indent Details Modal ─────────────────────────────────────────────────
 
@@ -689,8 +861,8 @@ export default function CreatePurchaseOrderForm({
                                                         type="checkbox"
                                                         className="w-4 h-4 cursor-pointer rounded"
                                                         style={{ accentColor: "#1565C0" }}
-                                                        onChange={() => {
-                                                            dispatch(
+                                                        onChange={async () => {
+                                                            const result = await dispatch(
                                                                 fetchSelectedIndentForPR({
                                                                     indentID: row.IndentMasterID,
                                                                     invoiceTaxTypeID:
@@ -699,6 +871,68 @@ export default function CreatePurchaseOrderForm({
                                                                     orderID: 0,
                                                                 })
                                                             );
+
+                                                            if (fetchSelectedIndentForPR.fulfilled.match(result)) {
+                                                                const data = result.payload as SelectedIndentForPR[];
+                                                                if (data && data.length > 0) {
+                                                                    const newItems: POItem[] = data.map((pr, idx) =>
+                                                                        computeItem({
+                                                                            id: Date.now() + idx,
+                                                                            barcode: pr.BarCode ?? "",
+                                                                            ItemCode: pr.ItemCode ?? "",
+                                                                            Hsn: pr.Hsn ?? "",
+                                                                            ItemName: pr.ItemName ?? "",
+                                                                            spec: pr.Spec ?? "",
+                                                                            IndentQty: pr.IndentQty ?? 0,
+                                                                            Quantity: pr.Quantity ?? 0,
+                                                                            billQty: pr.Quantity ?? 0,
+                                                                            PurchaseRate: pr.PurchaseRate ?? 0,
+                                                                            RequiredDate: pr.RequiredDate ?? "",
+                                                                            Unit: pr.Unit ?? "",
+                                                                            BillUnit: pr.BillUnit ?? "",
+                                                                            um: pr.Unit ?? "",
+                                                                            sales: String(pr.SalesRate ?? ""),
+                                                                            mrp: pr.Mrp ?? 0,
+                                                                            netPriceRate: pr.NetPurchaseRate ?? 0,
+                                                                            discountPercent: 0,
+                                                                            discountAmount: 0,
+                                                                            grossAmount: 0,
+                                                                            gstCategory: pr.GstCategoryDesc ?? "",
+                                                                            taxPercent: pr.TaxValue ?? 0,
+                                                                            taxRate: 0,
+                                                                            netAmount: 0,
+                                                                            cgstPercent: pr.CGST ?? 0,
+                                                                            sgstPercent: pr.SGST ?? 0,
+                                                                            igstPercent: pr.IGST ?? 0,
+                                                                            utgstPercent: pr.UTGST ?? 0,
+                                                                            vat: pr.VAT ?? 0,
+                                                                            cessPercent: pr.CESS ?? 0,
+                                                                            sgstAmount: 0,
+                                                                            cgstAmount: 0,
+                                                                            igstAmount: 0,
+                                                                            utgstAmount: 0,
+                                                                            vatAmount: 0,
+                                                                            cessAmount: 0,
+                                                                            previousPurchases: "",
+                                                                            ItemID: pr.ItemID ?? 0,
+                                                                            IndentDetailID: pr.IndentDetailID ?? null,
+                                                                            IndentMasterID: pr.IndentMasterID ?? null,
+                                                                            IndentNo: pr.IndentNo ?? "",
+                                                                            BatchID: pr.BatchID ?? 0,
+                                                                        })
+                                                                    );
+                                                                    setItems((prev) => {
+                                                                        const hasOnlyEmptyRow =
+                                                                            prev.length === 1 && !prev[0].ItemName && !prev[0].ItemCode;
+                                                                        return hasOnlyEmptyRow ? newItems : [...prev, ...newItems];
+                                                                    });
+                                                                    toast.success(`${data.length} item(s) added to PO`);
+                                                                } else {
+                                                                    toast.warning("No items available for this indent item.");
+                                                                }
+                                                            } else {
+                                                                toast.error("Failed to fetch item details. Please try again.");
+                                                            }
                                                         }}
                                                     />
                                                 </td>
@@ -762,7 +996,7 @@ export default function CreatePurchaseOrderForm({
             {
                 key: "IndentDate",
                 name: "Indent Date",
-                minWidth: 130,
+                minWidth: 120,
                 renderHeaderCell: (props) => (
                     <div className="flex items-center font-semibold">
                         {props.column.name}
@@ -770,19 +1004,9 @@ export default function CreatePurchaseOrderForm({
                 ),
             },
             {
-                key: "CategoryName",
-                name: "Category",
-                minWidth: 160,
-                renderHeaderCell: (props) => (
-                    <div className="flex items-center font-semibold">
-                        {props.column.name}
-                    </div>
-                ),
-            },
-            {
-                key: "SubCategoryName",
-                name: "Sub Category",
-                minWidth: 160,
+                key: "DepartmentName",
+                name: "Department",
+                minWidth: 140,
                 renderHeaderCell: (props) => (
                     <div className="flex items-center font-semibold">
                         {props.column.name}
@@ -791,11 +1015,26 @@ export default function CreatePurchaseOrderForm({
             },
             {
                 key: "EmpName",
-                name: "Generated By",
-                minWidth: 150,
+                name: "Employee",
+                minWidth: 140,
                 renderHeaderCell: (props) => (
                     <div className="flex items-center font-semibold">
                         {props.column.name}
+                    </div>
+                ),
+            },
+            {
+                key: "TotalQuantity",
+                name: "Total Qty",
+                minWidth: 100,
+                renderHeaderCell: (props) => (
+                    <div className="flex items-center justify-center font-semibold">
+                        {props.column.name}
+                    </div>
+                ),
+                renderCell: ({ row }) => (
+                    <div className="flex items-center justify-center tabular-nums">
+                        {row.TotalQuantity}
                     </div>
                 ),
             },
@@ -829,21 +1068,23 @@ export default function CreatePurchaseOrderForm({
                                     if (fetchSelectedIndentForPR.fulfilled.match(result)) {
                                         const data = result.payload as SelectedIndentForPR[];
                                         if (data && data.length > 0) {
+                                            // FIX: store IndentDetailID, IndentMasterID, IndentNo, BatchID
+                                            // on each POItem so multi-indent payload is built correctly
                                             const newItems: POItem[] = data.map((pr, idx) =>
                                                 computeItem({
                                                     id: Date.now() + idx,
                                                     barcode: pr.BarCode ?? "",
-                                                    itemCode: pr.ItemCode ?? "",
-                                                    Hsn: pr.Hsn ?? 0,
-                                                    item: pr.ItemName ?? "",
+                                                    ItemCode: pr.ItemCode ?? "",
+                                                    Hsn: pr.Hsn ?? "",
+                                                    ItemName: pr.ItemName ?? "",
                                                     spec: pr.Spec ?? "",
-                                                    indQty: pr.IndentQty ?? 0,
-                                                    qty: pr.Quantity ?? 0,
+                                                    IndentQty: pr.IndentQty ?? 0,
+                                                    Quantity: pr.Quantity ?? 0,
                                                     billQty: pr.Quantity ?? 0,
-                                                    pRate: pr.PurchaseRate ?? 0,
-                                                    reqDate: pr.RequiredDate ?? "",
-                                                    pUnit: pr.Unit ?? "",
-                                                    billUnit: pr.BillUnit ?? "",
+                                                    PurchaseRate: pr.PurchaseRate ?? 0,
+                                                    RequiredDate: pr.RequiredDate ?? "",
+                                                    Unit: pr.Unit ?? "",
+                                                    BillUnit: pr.BillUnit ?? "",
                                                     um: pr.Unit ?? "",
                                                     sales: String(pr.SalesRate ?? ""),
                                                     mrp: pr.Mrp ?? 0,
@@ -868,18 +1109,21 @@ export default function CreatePurchaseOrderForm({
                                                     vatAmount: 0,
                                                     cessAmount: 0,
                                                     previousPurchases: "",
+                                                    ItemID: pr.ItemID ?? 0,
+                                                    IndentDetailID: pr.IndentDetailID ?? null,
+                                                    IndentMasterID: pr.IndentMasterID ?? null,
+                                                    IndentNo: pr.IndentNo ?? "",
+                                                    BatchID: pr.BatchID ?? 0,
                                                 })
                                             );
-                                            // Append to existing items (replace empty placeholder row if only one empty row)
                                             setItems((prev) => {
                                                 const hasOnlyEmptyRow =
-                                                    prev.length === 1 && !prev[0].item && !prev[0].itemCode;
+                                                    prev.length === 1 && !prev[0].ItemName && !prev[0].ItemCode;
                                                 return hasOnlyEmptyRow ? newItems : [...prev, ...newItems];
                                             });
                                             toast.success(`${data.length} item(s) from ${row.IndentNo} added to PO`);
                                         } else {
                                             toast.warning(`No items available for indent ${row.IndentNo}`);
-                                            // Uncheck it back since nothing was added
                                             toggleIndentChecked(row.IndentMasterID);
                                         }
                                     } else {
@@ -888,7 +1132,6 @@ export default function CreatePurchaseOrderForm({
                                     }
                                 } else {
                                     // User unchecked — optionally remove those rows from PO table
-                                    // (skip if you don't need this behavior)
                                 }
                             }}
                         />
@@ -953,17 +1196,17 @@ export default function CreatePurchaseOrderForm({
         computeItem({
             id: Date.now(),
             barcode: "",
-            itemCode: "",
+            ItemCode: "",
             Hsn: "",
-            item: "",
+            ItemName: "",
             spec: "",
-            indQty: 0,
-            qty: 0,
+            IndentQty: 0,
+            Quantity: 0,
             billQty: 0,
-            pRate: 0,
-            reqDate: "",
-            pUnit: "",
-            billUnit: "",
+            PurchaseRate: 0,
+            RequiredDate: "",
+            Unit: "",
+            BillUnit: "",
             um: "",
             sales: "",
             mrp: 0,
@@ -988,11 +1231,17 @@ export default function CreatePurchaseOrderForm({
             vatAmount: 0,
             cessAmount: 0,
             previousPurchases: "",
+            ItemID: 0,
+            // FIX: empty item has no indent linkage
+            IndentDetailID: null,
+            IndentMasterID: null,
+            IndentNo: "",
+            BatchID: 0,
         });
 
-    const [items, setItems] = useState<POItem[]>([{ ...emptyItem(), id: 1 }]);
-
-    console.log('...items', items)
+    const [items, setItems] = useState<POItem[]>(() =>
+        editData ? buildItemsFromEditData(editData) : [{ ...emptyItem(), id: 1 }]
+    );
 
     const addItem = () => setItems((prev) => [...prev, emptyItem()]);
 
@@ -1014,13 +1263,14 @@ export default function CreatePurchaseOrderForm({
 
     // ─── Footer totals ────────────────────────────────────────────────────────
 
-    const totalNetQty = items.reduce((s, i) => s + (i.qty || 0), 0);
+    const totalNetQty = items.reduce((s, i) => s + (i.Quantity || 0), 0);
     const totalGrossAmount = items.reduce((s, i) => s + (i.grossAmount || 0), 0);
     const totalTaxAmount = items.reduce((s, i) => s + (i.taxRate || 0), 0);
     const totalNetAmount = items.reduce((s, i) => s + (i.netAmount || 0), 0);
 
     const handleClear = () => {
         setSupplier("");
+        setCurrency(baseCurrency[0]?.Currency || "Currency not specified");
         setCategory("");
         setSubCategory("");
         setIndentNo("");
@@ -1036,21 +1286,249 @@ export default function CreatePurchaseOrderForm({
         setCompleted(false);
     };
 
-    const handleSubmit = () => {
-        onSubmit?.({
-            orderNo,
-            orderDate,
-            invoiceTaxType,
-            store,
-            supplier,
-            currency,
-            exchangeRate,
-            category,
-            subCategory,
-            indentNo,
-            roundOff,
-            items,
-        });
+
+    // ─── Submit purchase order ────────────────────────────────────────────────
+
+    const handleSubmit = async () => {
+        if (!supplier) {
+            toast.error("Please select a supplier");
+            return;
+        }
+
+        // ─── Resolve IDs from Redux data ─────────────────────────────────────
+        const selectedSupplier = suppliers.find((s) => s.SupplierName === supplier);
+        // FIX: fall back to defaultStore if stores[] lookup misses
+        const selectedStore =
+            stores.find((s) => s.StoreName === store) ||
+            defaultStore.find((s) => s.StoreName === store);
+        const selectedCategory = itemCategories.find((c) => c.CategoryName === category);
+        const selectedSubCategory = itemSubCategories.find(
+            (sc) => sc.SubCategoryName === subCategory
+        );
+        // FIX: use allInvoiceTaxTypes for both lookup and fallback (same array)
+        const selectedTaxType =
+            allInvoiceTaxTypes.find((t) => t.InvoiceTaxType === invoiceTaxType) ??
+            allInvoiceTaxTypes[0];
+
+        const document = purchaseOrderDocuments[0];
+
+        // ─── Calculate totals ────────────────────────────────────────────────
+        const totalQty = items.reduce((sum, i) => sum + (i.Quantity || 0), 0);
+        const grossAmt = items.reduce((sum, i) => sum + (i.grossAmount || 0), 0);
+        const taxAmt = items.reduce((sum, i) => sum + (i.taxRate || 0), 0);
+        const netAmt = items.reduce((sum, i) => sum + (i.netAmount || 0), 0);
+
+        const totalCGST = items.reduce((sum, i) => sum + (i.cgstAmount || 0), 0);
+        const totalSGST = items.reduce((sum, i) => sum + (i.sgstAmount || 0), 0);
+        const totalIGST = items.reduce((sum, i) => sum + (i.igstAmount || 0), 0);
+        const totalUTGST = items.reduce((sum, i) => sum + (i.utgstAmount || 0), 0);
+        const totalVAT = items.reduce((sum, i) => sum + (i.vatAmount || 0), 0);
+        const totalCESS = items.reduce((sum, i) => sum + (i.cessAmount || 0), 0);
+        const totalDiscount = items.reduce((sum, i) => sum + (i.discountAmount || 0), 0);
+
+        // ─── FIX: derive all indent-related fields from items array ──────────
+        // This correctly handles multiple indents by reading IndentNo stored
+        // on each POItem at the time it was added from the indent table.
+        const indentItems = items.filter(
+            (i) => i.IndentMasterID !== null && (i.IndentMasterID ?? 0) > 0
+        );
+        // Unique IndentNos in insertion order → "PI-80, PI-78, PI-75, "
+        const uniqueIndentNos = [
+            ...new Set(indentItems.map((i) => i.IndentNo).filter(Boolean)),
+        ];
+        const indentNoStr =
+            uniqueIndentNos.length > 0 ? uniqueIndentNos.join(", ") + ", " : "";
+
+        // Unique IndentMasterIDs → for InpassDocumentID
+        const uniqueIndentMasterIDs = [
+            ...new Set(indentItems.map((i) => i.IndentMasterID as number)),
+        ];
+        const inpassDocumentID =
+            uniqueIndentMasterIDs.length > 0
+                ? uniqueIndentMasterIDs.join(", ") + ", "
+                : "";
+
+        // First IndentMasterID used as the header-level IndentID / IndentMasterID
+        const firstIndentMasterID = uniqueIndentMasterIDs[0] ?? null;
+
+        // ─── FIX: OrderDate as ISO string, OrderDateStr as "dd-mm-yyyy" ──────
+        const orderDateISO = new Date(orderDate).toISOString();
+        const orderDateStr = orderDate.split("-").reverse().join("-"); // "21-04-2026"
+
+        // ─── FIX: ExpectedDate as ISO string, ExpectedDateStr as "dd-mm-yyyy"
+        const expectedDateISO = expectedDate ? new Date(expectedDate).toISOString() : "";
+        const expectedDateStr = expectedDate
+            ? expectedDate.split("-").reverse().join("-")
+            : "";
+
+        // ─── Build detail rows for API ───────────────────────────────────────
+        // FIX: IndentDetailID, IndentMasterID, BatchID now come from each item
+        const LstPurchaseOrderDetails = items.map((item) => ({
+            ItemID: item.ItemID || 0,
+            ItemCode: item.ItemCode || "",
+            ItemName: item.ItemName || "",
+            Hsn: item.Hsn || "",
+            Spec: item.spec || "",
+            IndentQty: item.IndentQty || 0,
+            Quantity: item.Quantity || 0,
+            BillQty: item.billQty || 0,
+            PurchaseRate: item.PurchaseRate || 0,
+            RequiredDate: item.RequiredDate || "",
+            Unit: item.Unit || "",
+            BillUnit: item.BillUnit || "",
+            SalesRate: parseFloat(item.sales) || 0,
+            Mrp: item.mrp || 0,
+            NetPurchaseRate: item.netPriceRate || 0,
+            DiscountPercent: item.discountPercent || 0,
+            DiscountAmount: item.discountAmount || 0,
+            GrossAmount: item.grossAmount || 0,
+            TaxPercent: item.taxPercent || 0,
+            TaxAmount: item.taxRate || 0,
+            NetAmount: item.netAmount || 0,
+            CGSTPercent: item.cgstPercent || 0,
+            SGSTPercent: item.sgstPercent || 0,
+            IGSTPercent: item.igstPercent || 0,
+            UTGSTPercent: item.utgstPercent || 0,
+            VATPercent: item.vat || 0,
+            CESSPercent: item.cessPercent || 0,
+            CGSTAmount: item.cgstAmount || 0,
+            SGSTAmount: item.sgstAmount || 0,
+            IGSTAmount: item.igstAmount || 0,
+            UTGSTAmount: item.utgstAmount || 0,
+            VATAmount: item.vatAmount || 0,
+            CESSAmount: item.cessAmount || 0,
+            GstCategoryDesc: item.gstCategory || "",
+            IndentDetailID: item.IndentDetailID ?? null,
+            IndentMasterID: item.IndentMasterID ?? null,
+            BatchID: item.BatchID ?? 0,
+        }));
+
+        const payload: any = {
+            // FIX: correct date formats
+            OrderDate: orderDateISO,
+            OrderDateStr: orderDateStr,
+            ExpectedDate: expectedDateISO,
+            ExpectedDateStr: expectedDateStr,
+
+            TaxPercHead: "0",
+            TaxAmountHead: "0",
+            SupQtyIndexCE: supplierQualityIndexCE.toString(),
+            SupQtyIndexPC: supplierQualityIndexPC,
+            Attention: attention,
+            BillingAddress: billingAddress,
+            BillwiseDiscountAmt: "0",
+            BillwiseDiscountPer: 0,
+            CategoryID: selectedCategory?.CategoryID ?? null,
+            CategoryName: category || null,
+            Conditions: conditions,
+            // FIX: currency is supplier-aware (updated on supplier change)
+            Currency: currency,
+            CurrencyID: selectedSupplier?.CurrencyID ?? baseCurrency[0]?.CurrencyID ?? 0,
+            DocumentID: document?.DocumentID ?? 0,
+            DocumentName: document?.DocumentName ?? "",
+            ExRate: exchangeRate,
+            ExchRate: exchangeRate,
+            GrossAmount: grossAmt.toFixed(2),
+            GrossAmountBase: grossAmt,
+            // FIX: all indent fields derived from items array
+            IndentID: firstIndentMasterID,
+            IndentMasterID: firstIndentMasterID,
+            IndentNo: indentNoStr,
+            IndentTID: null,
+            InpassDocumentID: inpassDocumentID,
+            InvoiceTaxType: invoiceTaxType,
+            // FIX: InvoiceTaxTypeID from allInvoiceTaxTypes only
+            InvoiceTaxTypeID: selectedTaxType?.InvoiceTaxTypeID ?? 0,
+            IsGST: document?.IsGST ?? false,
+            IsLocal: selectedSupplier?.IsLocal ?? false,
+            IsVAT: document?.IsVAT ?? false,
+            LstPurchaseOrderDetails,
+            LstporderDetails: [],
+            NetAmount: netAmt.toFixed(2),
+            NetAmountBase: netAmt.toFixed(2),
+            NetTotal: netAmt.toFixed(2),
+            NetTotalBase: netAmt.toFixed(2),
+            OrderID: 0,
+            OrderNo: orderNo,
+            OtherAdditionalAmount: "0",
+            OtherAdditionalAmountBase: "0",
+            OtherDeductionAmount: "0",
+            OtherDeductionAmountBase: "0",
+            PackingIndent: false,
+            PreNetAmount: netAmt.toFixed(2),
+            PreNetAmountBase: netAmt.toFixed(2),
+            Quantity: totalQty.toString(),
+            SearchItemID: 0,
+            ShippingAddress: shippingAddress,
+            // FIX: fall back to defaultStore if stores[] is empty
+            StoreID: selectedStore?.StoreID ?? 0,
+            StoreName: store || "",
+            SubCategoryID: selectedSubCategory?.SubCategoryID ?? null,
+            SubCategoryName: subCategory || null,
+            SupplierID: selectedSupplier?.SupplierID ?? 0,
+            SupplierName: supplier || "",
+            TaxMasterID: document?.TaxMasterID ?? 0,
+            TaxMasterName: "",
+            TaxPayerType: selectedSupplier?.TaxPayerType ?? "",
+            TotalCESSAmt: totalCESS,
+            TotalCGSTAmt: totalCGST,
+            TotalDiscount: totalDiscount.toFixed(2),
+            TotalDiscountBase: totalDiscount,
+            TotalIGSTAmt: totalIGST,
+            TotalQuantity: totalQty.toString(),
+            TotalSGSTAmt: totalSGST,
+            TotalTax: taxAmt.toFixed(2),
+            TotalTaxBase: taxAmt.toFixed(2),
+            TotalUTGSTAmt: totalUTGST,
+            TotalVATAmount: totalVAT,
+            ValidDate: null,
+            ValidDays: 0,
+        };
+        setIsSaving(true);
+        try {
+            // Replace:
+            //   const result = await dispatch(savePurchaseOrder(payload)).unwrap();
+            // with:
+
+            const result = isEditMode
+                ? await dispatch(updatePurchaseOrder({ ...payload, OrderID: editData!.OrderID })).unwrap()
+                : await dispatch(savePurchaseOrder(payload)).unwrap();
+
+            if (result.Success) {
+                toast.success(
+                    isEditMode
+                        ? "Purchase Order updated successfully!"
+                        : "Purchase Order saved successfully!"
+                );
+                dispatch(clearSelectedPO());
+                onSubmit?.({
+                    OrderID: isEditMode ? editData!.OrderID : result.Id,
+                    orderNo: payload.OrderNo,
+                    orderDate: payload.OrderDateStr,
+                    document: payload.DocumentName,
+                    party: payload.SupplierName,
+                    store: payload.StoreName,
+                    amount: payload.NetAmount,
+                    indentNos: payload.IndentNo,
+                    salesOrder: "",
+                    status: "Pending",
+                    custCod: "",
+                    createdD: new Date().toLocaleDateString("en-GB"),
+                    approved: "",
+                    complete: "",
+                    prepared: "",
+                    approved2: "",
+                });
+                handleClear();
+                onClose();
+            } else {
+                toast.error(result.Message || "Failed to save purchase order");
+            }
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to save purchase order");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const triggerCls =
@@ -1118,7 +1596,8 @@ export default function CreatePurchaseOrderForm({
                                 </div>
                                 <div>
                                     <Label>Order Date</Label>
-                                    <Input value={orderDate} readOnly />
+                                    {/* FIX: display formatted dd-mm-yyyy but store as ISO */}
+                                    <Input value={orderDate.split("-").reverse().join("-")} readOnly />
                                 </div>
                                 <div>
                                     <Label>Invoice Tax Type</Label>
@@ -1143,11 +1622,18 @@ export default function CreatePurchaseOrderForm({
                                 </div>
                                 <div className="md:col-span-2">
                                     <Label>Supplier</Label>
+                                    {/* FIX: update currency when supplier changes */}
                                     <SelectField
                                         placeholder="Select Supplier"
                                         options={suppliers?.map((s) => s.SupplierName) || []}
                                         value={supplier}
-                                        onChange={setSupplier}
+                                        onChange={(v) => {
+                                            setSupplier(v);
+                                            const sup = suppliers.find((s) => s.SupplierName === v);
+                                            if (sup) {
+                                                setCurrency(sup.Currency);
+                                            }
+                                        }}
                                     />
                                 </div>
                                 <div>
@@ -1345,7 +1831,62 @@ export default function CreatePurchaseOrderForm({
                             </span>
                         </AccordionTrigger>
                         <AccordionContent className="border-t border-slate-100 px-5 pt-5 pb-5  h-full">
-
+                            <POIndentTable
+                                onItemsSelected={(data: any[]) => {
+                                    const newItems = data.map((pr: any, idx: number) =>
+                                        computeItem({
+                                            id: Date.now() + idx,
+                                            barcode: pr.BarCode ?? "",
+                                            ItemCode: pr.ItemCode ?? "",
+                                            Hsn: pr.Hsn ?? "",
+                                            ItemName: pr.ItemName ?? "",
+                                            spec: pr.Spec ?? "",
+                                            IndentQty: pr.IndentQty ?? 0,
+                                            Quantity: pr.Quantity ?? 0,
+                                            billQty: pr.Quantity ?? 0,
+                                            PurchaseRate: pr.PurchaseRate ?? 0,
+                                            RequiredDate: pr.RequiredDate ?? "",
+                                            Unit: pr.Unit ?? "",
+                                            BillUnit: pr.BillUnit ?? "",
+                                            um: pr.Unit ?? "",
+                                            sales: String(pr.SalesRate ?? ""),
+                                            mrp: pr.Mrp ?? 0,
+                                            netPriceRate: pr.NetPurchaseRate ?? pr.NetPRate ?? 0,
+                                            discountPercent: 0,
+                                            discountAmount: 0,
+                                            grossAmount: 0,
+                                            gstCategory: pr.GstCategoryDesc ?? pr.GstCategoryDesc1 ?? "",
+                                            taxPercent: pr.TaxValue ?? pr.TaxPercentage ?? 0,
+                                            taxRate: 0,
+                                            netAmount: 0,
+                                            cgstPercent: pr.CGST ?? pr.CGSTPer ?? 0,
+                                            sgstPercent: pr.SGST ?? pr.SGSTPer ?? 0,
+                                            igstPercent: pr.IGST ?? pr.IGSTPer ?? 0,
+                                            utgstPercent: pr.UTGST ?? pr.UTGSTPer ?? 0,
+                                            vat: pr.VAT ?? pr.VATPer ?? 0,
+                                            cessPercent: pr.CESS ?? pr.CESSPer ?? 0,
+                                            sgstAmount: 0,
+                                            cgstAmount: 0,
+                                            igstAmount: 0,
+                                            utgstAmount: 0,
+                                            vatAmount: 0,
+                                            cessAmount: 0,
+                                            previousPurchases: "",
+                                            ItemID: pr.ItemID ?? 0,
+                                            IndentDetailID: pr.IndentDetailID ?? null,
+                                            IndentMasterID: pr.IndentMasterID ?? null,
+                                            IndentNo: pr.IndentNo ?? "",
+                                            BatchID: pr.BatchID ?? 0,
+                                        })
+                                    );
+                                    setItems((prev) => {
+                                        const hasOnlyEmptyRow =
+                                            prev.length === 1 && !prev[0].ItemName && !prev[0].ItemCode;
+                                        return hasOnlyEmptyRow ? newItems : [...prev, ...newItems];
+                                    });
+                                    toast.success(`${data.length} item(s) added to PO`);
+                                }}
+                            />
                             <div className="overflow-x-auto rounded-lg border border-slate-200">
                                 <table className="w-full text-[12px] text-left border-collapse">
                                     <thead>
@@ -1384,9 +1925,9 @@ export default function CreatePurchaseOrderForm({
 
                                                 {/* 3. Item Code */}
                                                 <TextCell
-                                                    value={row.itemCode}
+                                                    value={row.ItemCode}
                                                     placeholder="Item Code"
-                                                    onChange={(v) => updateItem(row.id, "itemCode", v)}
+                                                    onChange={(v) => updateItem(row.id, "ItemCode", v)}
                                                     minWidth="min-w-[100px]"
                                                 />
 
@@ -1400,9 +1941,9 @@ export default function CreatePurchaseOrderForm({
 
                                                 {/* 4. Item */}
                                                 <TextCell
-                                                    value={row.item}
+                                                    value={row.ItemName}
                                                     placeholder="Select Item"
-                                                    onChange={(v) => updateItem(row.id, "item", v)}
+                                                    onChange={(v) => updateItem(row.id, "ItemName", v)}
                                                     minWidth="min-w-[160px]"
                                                 />
 
@@ -1416,14 +1957,14 @@ export default function CreatePurchaseOrderForm({
 
                                                 {/* 6. IND. Qty */}
                                                 <NumberCell
-                                                    value={row.indQty}
-                                                    onChange={(v) => updateItem(row.id, "indQty", v)}
+                                                    value={row.IndentQty}
+                                                    onChange={(v) => updateItem(row.id, "IndentQty", v)}
                                                 />
 
                                                 {/* 7. Quantity */}
                                                 <NumberCell
-                                                    value={row.qty}
-                                                    onChange={(v) => updateItem(row.id, "qty", v)}
+                                                    value={row.Quantity}
+                                                    onChange={(v) => updateItem(row.id, "Quantity", v)}
                                                 />
 
                                                 {/* 8. Bill Qty */}
@@ -1434,36 +1975,34 @@ export default function CreatePurchaseOrderForm({
 
                                                 {/* 9. P.Rate */}
                                                 <NumberCell
-                                                    value={row.pRate}
-                                                    onChange={(v) => updateItem(row.id, "pRate", v)}
+                                                    value={row.PurchaseRate}
+                                                    onChange={(v) => updateItem(row.id, "PurchaseRate", v)}
                                                 />
 
                                                 {/* 10. Req Date */}
                                                 <td className="px-1 py-1 min-w-[110px]">
                                                     <input
-                                                        type="date"
+                                                        type="textbox"
+                                                        placeholder="required date"
                                                         className="w-full h-7 px-2 border border-slate-200 rounded text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
-                                                        value={row.reqDate}
-                                                        onChange={(e) =>
-                                                            updateItem(row.id, "reqDate", e.target.value)
-                                                        }
+                                                        value={row.RequiredDate}
+                                                        readOnly
                                                     />
                                                 </td>
 
                                                 {/* 11. P.Unit */}
                                                 <TextCell
-                                                    value={row.pUnit}
+                                                    value={row.Unit}
                                                     placeholder="Unit"
-                                                    onChange={(v) => updateItem(row.id, "pUnit", v)}
+                                                    onChange={(v) => updateItem(row.id, "Unit", v)}
                                                     minWidth="min-w-[70px]"
                                                 />
 
                                                 {/* 12. Bill Unit */}
-                                                <TextCell
-                                                    value={row.billUnit}
-                                                    placeholder="Bill Unit"
-                                                    onChange={(v) => updateItem(row.id, "billUnit", v)}
-                                                    minWidth="min-w-[70px]"
+                                                <BillUnitCell
+                                                    value={row.BillUnit}
+                                                    itemUnits={itemUnits}
+                                                    onChange={(v) => updateItem(row.id, "BillUnit", v)}
                                                 />
 
                                                 {/* 13. UM */}
@@ -1890,7 +2429,7 @@ export default function CreatePurchaseOrderForm({
                         className="flex items-center gap-2 px-6 py-2 text-[13px] font-semibold bg-[#004687] text-white hover:bg-[#003a73] rounded-lg shadow-sm transition-all cursor-pointer"
                     >
                         <Save size={13} />
-                        Submit
+                        {isSaving ? "Saving..." : "Submit"}
                     </button>
                 </div>
             </div>
