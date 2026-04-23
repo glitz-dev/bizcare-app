@@ -9,6 +9,7 @@ import UserPage from './pages/UserPage'
 import PurchaseIndent from './pages/procurement/PurchaseIndent'
 import { Toaster } from './components/ui/sonner'
 import PurchaseOrder from './pages/procurement/PurchaseOrder'
+import Purchase from './pages/procurement/Purchase'
 
 const App = () => {
   return (
@@ -26,6 +27,7 @@ const App = () => {
           <Route path="/user" element={<UserPage />} />
           <Route path="/Inventory/indentdetail" element ={<PurchaseIndent />} />
           <Route path="/Inventory/purchase-order" element ={<PurchaseOrder />} />
+          <Route path="/Inventory/purchase" element={<Purchase />} />
         </Route>
         
         {/* 404 Route */}

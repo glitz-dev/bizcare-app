@@ -11,6 +11,9 @@ import CreatePurchaseOrderForm from "@/components/Createpurchaseorderform";
 import {
     fetchPurchaseOrders,
     fetchItems,
+    fetchSelectedPO,
+    clearSelectedPO,
+    type SelectedPO,
 } from "@/store/features/inventory/procurement/purchaseOrderSlice";
 
 import { ClipboardList } from "lucide-react";
@@ -25,8 +28,35 @@ export default function PurchaseOrder() {
     const [fromDate, setFromDate] = useState(getOneMonthAgo());
     const [toDate, setToDate] = useState(getToday());
     const [selectedItem, setSelectedItem] = useState("");
+    const [localRows, setLocalRows] = useState<any[]>([]);
+    const [editingPO, setEditingPO] = useState<SelectedPO | null>(null);
 
     const dispatch = useDispatch<AppDispatch>();
+    const { selectedPO, selectedPOLoading } = useSelector(
+        (state: RootState) => state.purchaseOrder
+    );
+
+    useEffect(() => {
+        if (selectedPO) {
+            setEditingPO(selectedPO);
+            setShowCreateForm(true);
+        }
+    }, [selectedPO]);
+
+    const handleEdit = useCallback((row: any) => {
+        if (!row.OrderID) {
+            console.warn("No OrderID on row", row);
+            return;
+        }
+        dispatch(fetchSelectedPO({ orderID: row.OrderID }));
+    }, [dispatch]);
+
+
+    const handleFormClose = () => {
+        setShowCreateForm(false);
+        setEditingPO(null);
+        dispatch(clearSelectedPO());
+    };
 
     // ─── Redux State ──────────────────────────────────────────────────────
     const {
@@ -50,6 +80,7 @@ export default function PurchaseOrder() {
 
     // ─── Handlers ─────────────────────────────────────────────────────────
     const handleSearch = useCallback(() => {
+        setLocalRows([]);
         dispatch(
             fetchPurchaseOrders({
                 fromDate,
@@ -64,25 +95,24 @@ export default function PurchaseOrder() {
 
     const handleCreateNew = () => {
         setShowCreateForm(true);
-    };
-
-    const handleFormClose = () => {
-        setShowCreateForm(false);
+        setEditingPO(null);
     };
 
     const handleFormSubmit = (data: any) => {
-        console.log("✅ New Purchase Order submitted:", data);
-        // TODO: dispatch create action, then:
+        setLocalRows((prev) => {
+            if (data.OrderID && editingPO) {
+                return prev.map((r) => r.OrderID === data.OrderID ? data : r);
+            }
+            return [data, ...prev];
+        });
+        setEditingPO(null);
+        dispatch(clearSelectedPO());
         setShowCreateForm(false);
-        handleSearch(); // refresh list
+        handleSearch();
     };
 
     const handleView = (row: any) => {
         console.log("👁️ View Items for:", row.orderNo);
-    };
-
-    const handleEdit = (row: any) => {
-        console.log("✏️ Edit Purchase Order:", row.orderNo);
     };
 
     // ─── Columns ──────────────────────────────────────────────────────────
@@ -118,7 +148,7 @@ export default function PurchaseOrder() {
             { key: "prepared", name: "Prepared", renderHeaderCell: (props: any) => <FilterHeader {...props} />, width: 100 },
             { key: "approved2", name: "Approved", renderHeaderCell: (props: any) => <FilterHeader {...props} />, width: 100 },
         ],
-        []
+        [handleEdit, handleView]
     );
 
     // ─── Load Items for dropdown (once) ─────────────────────────────────────
@@ -144,11 +174,23 @@ export default function PurchaseOrder() {
     }, []);
 
     // ─── Conditional Render ───────────────────────────────────────────────
+    if (selectedPOLoading) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-7 h-7 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                    <p className="text-[13px] text-slate-400 font-medium">Loading purchase order…</p>
+                </div>
+            </div>
+        );
+    }
+
     if (showCreateForm) {
         return (
             <CreatePurchaseOrderForm
                 onClose={handleFormClose}
                 onSubmit={handleFormSubmit}
+                editData={editingPO}
             />
         );
     }
@@ -179,7 +221,7 @@ export default function PurchaseOrder() {
 
                 <DataTable
                     columns={columns}
-                    rows={purchaseOrders}
+                    rows={[...localRows, ...purchaseOrders]}
                     rowKey="orderNo"
                     loading={loading}
                     error={error}

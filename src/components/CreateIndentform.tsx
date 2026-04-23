@@ -151,10 +151,10 @@ function SearchableCombobox({
                     type="button"
                     disabled={disabled}
                     className={cn(
-                        "flex items-center justify-between w-full h-8 px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60",
-                        "focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687]/40 transition",
+                        "flex items-center justify-between w-full h-9 px-3 text-[13px] text-slate-700 border border-slate-200 rounded-lg bg-white",
+                        "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 transition-all",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
-                        "hover:border-[#6F8FAF]/60",
+                        "hover:border-slate-300",
                         triggerClassName
                     )}
                 >
@@ -210,8 +210,8 @@ function SearchableCombobox({
 // ─── Reusable Field Wrapper ───────────────────────────────────────────────────
 function FieldLabel({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
     return (
-        <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-            <Icon size={10} className="text-[#6F8FAF]" />
+        <label className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-1.5">
+            <Icon size={12} className="text-[#004687]" />
             {label}
         </label>
     );
@@ -223,9 +223,9 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: Rea
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
                 <div className="w-5 h-5 rounded-md bg-[#004687]/10 flex items-center justify-center">
-                    <Icon size={11} className="text-[#004687]" />
+                    <Icon size={12} className="text-[#004687]" />
                 </div>
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-widest">{title}</span>
+                <span className="text-[13px] font-semibold text-slate-600 uppercase tracking-wide">{title}</span>
             </div>
             <div className="p-4">{children}</div>
         </div>
@@ -240,7 +240,7 @@ function ClearableInput({ value, onChange, placeholder, className, ...rest }: Om
                 value={value as string}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className={cn("w-full h-8 px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687]/40 transition pr-7", className)}
+                className={cn("w-full h-9 px-3 text-[13px] text-slate-700 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 placeholder:text-slate-300 transition-all pr-7", className)}
                 {...rest}
             />
             {value && (
@@ -737,7 +737,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                                 <input
                                     value={indentNo}
                                     onChange={(e) => setIndentNo(e.target.value)}
-                                    className="w-full h-8 px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687]/40 transition font-mono font-semibold text-[#004687]"
+                                    className="w-full h-9 px-3 text-[13px] text-slate-700 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 transition-all font-mono font-semibold text-[#004687]"
                                 />
                             </div>
                             <div>
@@ -746,7 +746,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                                     type="date"
                                     value={indentDate}
                                     onChange={(e) => setIndentDate(e.target.value)}
-                                    className="w-full h-8 px-3 text-xs border border-slate-200 rounded-lg bg-slate-50/60 focus:outline-none focus:ring-2 focus:ring-[#004687]/20 focus:border-[#004687]/40 transition"
+                                    className="w-full h-9 px-3 text-[13px] text-slate-700 border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 transition-all"
                                 />
                             </div>
                             <div>
@@ -787,7 +787,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                                     size="sm"
                                     type="button"
                                     onClick={() => setSalesOrderModalOpen(true)}
-                                    className="h-8 px-4 bg-[#6F8FAF] hover:bg-[#004687] text-white text-[11px] font-bold rounded-lg tracking-wider shadow-none gap-2 cursor-pointer transition-colors"
+                                    className="h-9 px-4 bg-[#6F8FAF] hover:bg-[#004687] text-white text-[13px] font-semibold rounded-lg tracking-wider shadow-none gap-2 cursor-pointer transition-colors"
                                 >
                                     <ExternalLink size={12} /> Sales Orders
                                 </Button>
@@ -802,7 +802,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                                 <div className="w-5 h-5 rounded-md bg-[#004687]/10 flex items-center justify-center">
                                     <Package size={11} className="text-[#004687]" />
                                 </div>
-                                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-widest">Line Items</span>
+                                <span className="text-[13px] font-semibold text-slate-600 uppercase tracking-wide">Line Items</span>
                                 <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#004687]/10 text-[#004687] text-[10px] font-bold">{lines.length}</span>
                             </div>
                             <button
@@ -940,14 +940,14 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                                 <div className="w-5 h-5 rounded-md bg-[#004687]/10 flex items-center justify-center">
                                     <MessageSquare size={11} className="text-[#004687]" />
                                 </div>
-                                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-widest">Remarks</span>
+                                <span className="text-[13px] font-semibold text-slate-600 uppercase tracking-wide">Remarks</span>
                             </div>
                             <div className="p-4">
                                 <Textarea
                                     value={remarks}
                                     onChange={(e) => setRemarks(e.target.value)}
                                     placeholder="Add any remarks or special instructions…"
-                                    className="text-xs border border-slate-200 rounded-lg resize-none h-[72px] focus-visible:ring-1 focus-visible:ring-[#004687]/30 focus-visible:border-[#6F8FAF]/60 bg-slate-50/60"
+                                    className="text-[13px] text-slate-700 border border-slate-200 rounded-lg resize-none h-[72px] focus-visible:ring-2 focus-visible:ring-sky-500/30 focus-visible:border-sky-400 bg-white placeholder:text-slate-300 transition-all"
                                 />
                             </div>
                         </div>
@@ -977,7 +977,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                             variant="outline"
                             size="sm"
                             onClick={onClose}
-                            className="h-8 px-5 text-xs font-semibold border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg"
+                            className="h-9 px-5 text-[13px] font-medium border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg"
                         >
                             Cancel
                         </Button>
@@ -985,7 +985,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                             variant="outline"
                             size="sm"
                             onClick={handleClear}
-                            className="h-8 px-5 text-xs font-semibold border-amber-200 text-amber-600 hover:bg-amber-50 hover:border-amber-300 rounded-lg gap-1.5"
+                            className="h-9 px-5 text-[13px] font-medium border-amber-200 text-amber-600 hover:bg-amber-50 hover:border-amber-300 rounded-lg gap-1.5"
                         >
                             <RefreshCcw size={12} /> Clear
                         </Button>
@@ -993,7 +993,7 @@ export function CreateIndentForm({ onClose, onSuccess, isEditMode = false,
                             size="sm"
                             onClick={handleSubmit}
                             disabled={saveIndentLoading}
-                            className="h-8 px-6 text-xs font-semibold bg-[#004687] hover:bg-[#003a70] text-white rounded-lg shadow-none gap-1.5 transition-colors disabled:opacity-70 cursor-pointer"
+                            className="h-9 px-6 text-[13px] font-semibold bg-[#004687] hover:bg-[#003a70] text-white rounded-lg shadow-none gap-1.5 transition-colors disabled:opacity-70 cursor-pointer"
                         >
                             {saveIndentLoading ? (
                                 <>

@@ -29,6 +29,61 @@ export interface Item {
   ItemCode: string | null;
 }
 
+// ─── NEW INTERFACE FOR GetItemDetailsForOpeningStock API ───────────────────────
+export interface ItemDetailsForOpeningStock {
+  ItemID: number;
+  ItemCode: string | null;
+  ItemName: string;
+  Hsn: string;
+  PurchaseRate: number | null;
+  Description: string | null;
+  CategoryID: number;
+  CategoryName: string;
+  ItemGroupID: number | null;
+  ItemGroupName: string | null;
+  SubCategoryID: number | null;
+  SubCategoryName: string | null;
+  ItemTypeID: number;
+  ItemType: string;
+  StockTypeID: number;
+  PurchaseUnitID: number;
+  PurchaseUnit: string;
+  SalesUnitID: number;
+  SalesUnit: string;
+  PurchaseUnitMultiplier: number;
+  UnitMultiplier: number;
+  HeadID: number | null;
+}
+
+export interface ProductionItemDetail {
+  ItemID: number;
+  ItemCode: string;
+  ItemName: string;
+  Description: string | null;
+  PurchaseUnitID: number;
+  PurchaseUnit: string;
+  Hsn: string;
+  SalesUnitID: number;
+  SalesUnit: string;
+  SalesRate: number | null;
+  UnitMultiplier: number;
+  IsNonStockItem: boolean;
+  DesignID: number | null;
+  DesignCode: string | null;
+  DesignName: string | null;
+  TaxCategoryCode: string;
+  TaxCategoryId: number;
+  InvoiceTaxType: string;
+  TaxValue: number;
+  SGST: number | null;
+  CGST: number | null;
+  IGST: number | null;
+  UTGST: number | null;
+  CESS: number | null;
+  VAT: number | null;
+  CurrentQuantity: number;
+}
+
 export interface PurchaseOrderDocument {
   DocumentID: number;
   DocumentName: string;
@@ -82,7 +137,7 @@ export interface RemainingIndent {
   CategoryID: number;
   CategoryName: string;
   SubCategoryID: number;
-  SubCategoryName: string;
+  SubCategoryName: string | null;
   PriorityID: number;
   TotalRowCount: number;
 }
@@ -161,6 +216,42 @@ export interface SelectedIndentItem {
   IndentNo: string;
 }
 
+// ─── Selected Item For PR (from GetSelectedItemForPR) ───────────────────────
+export interface SelectedItemForPR {
+  ItemID: number;
+  ItemName: string;
+  ItemCode: string | null;
+  Hsn: string;
+  SpecID: number | null;
+  Spec: string | null;
+  UnitMultiplier: number;
+  UnitID: number;
+  Unit: string;
+  BillUnit: string;
+  BillUnitID: number;
+  PurchaseRate: number;
+  Mrp: number | null;
+  SalesRate: number | null;
+  NetPurchaseRate: number | null;
+  TaxCategoryCode: string;
+  TaxCategoryId: number;
+  InvoiceTaxType: string;
+  TaxValue: number;
+  SGST: number | null;
+  CGST: number | null;
+  IGST: number | null;
+  UTGST: number | null;
+  CESS: number | null;
+  VAT: number | null;
+  GSTCategoryMID: number;
+  GstCategoryDesc: string;
+  GSTCategoryTID: number;
+  StockTypeID: number;
+  PurchaseUnitID: number;
+  GstCategoryDesc1: string;
+  PackingIndent: number;
+}
+
 export interface FetchSelectedIndentItemsParams {
   indentID: number;
   purchaseOrderID?: number;
@@ -214,6 +305,12 @@ export interface SelectedIndentForPR {
   GSTCategoryTID: number;
   GstCategoryDesc: string;
   PackingIndent: number;
+}
+
+export interface ItemUnit {
+  Unit: string;
+  ItemUnitName: string;
+  UnitID: number;
 }
 
 export interface FetchSelectedIndentForPRParams {
@@ -314,6 +411,325 @@ export interface FetchAllSuppliersParams {
   finYearId?: number;
 }
 
+// ─── PARAMS FOR GetItemDetailsForOpeningStock API ─────────────────────────
+export interface FetchItemDetailsForOpeningStockParams {
+  searchStr?: string;
+  companyId?: number;
+  finYearId?: number;
+}
+
+export interface FetchProductionItemDetailsParams {
+  asMode?: string;
+  customerCode?: string;
+  customerId?: number;
+  designCode?: string;
+  invoiceTaxTypeId?: number;
+  itemCode?: string;
+  itemId?: number;
+  companyId?: number;
+  finYearId?: number;
+}
+
+export interface FetchSelectedItemForPRParams {
+  itemID: number;
+  invoiceTaxTypeID: number;
+  companyId?: number;
+  finYearId?: number;
+}
+
+export interface FetchItemUnitsParams {
+  searchStr?: string;
+  companyId?: number;
+  finYearId?: number;
+}
+
+// ─── SaveChanges Payload ────────────────────────────────────────────────────────
+export interface PurchaseOrderDetailPayload {
+  ItemID: number;
+  IndentDetailID: number | null;
+  IndentMasterID: number | null;
+  BatchID: number;
+  ItemCode: string;
+  [key: string]: unknown;
+}
+
+export interface SavePurchaseOrderPayload {
+  OrderDateStr: string;
+  TaxPercHead: string;
+  TaxAmountHead: string;
+  SupQtyIndexCE: string;
+  SupQtyIndexPC: number;
+  Attention: string;
+  BillingAddress: string;
+  BillwiseDiscountAmt: string;
+  BillwiseDiscountPer: number;
+  CategoryID: number | null;
+  CategoryName: string | null;
+  Conditions: string;
+  Currency: string;
+  CurrencyID: number;
+  DocumentID: number;
+  DocumentName: string;
+  ExRate: number;
+  ExchRate: number;
+  ExpectedDate: string;
+  ExpectedDateStr: string;
+  GrossAmount: string;
+  GrossAmountBase: number;
+  IndentID: number | null;
+  IndentMasterID: number | null;
+  IndentNo: string;
+  IndentTID: number | null;
+  InpassDocumentID: string;
+  InvoiceTaxType: string;
+  InvoiceTaxTypeID: number;
+  IsGST: boolean;
+  IsLocal: boolean;
+  IsVAT: boolean;
+  LstPurchaseOrderDetails: PurchaseOrderDetailPayload[];
+  LstporderDetails: unknown[];
+  NetAmount: string;
+  NetAmountBase: string;
+  NetTotal: string;
+  NetTotalBase: string;
+  OrderDate: string;
+  OrderID: number;
+  OrderNo: string;
+  OtherAdditionalAmount: string;
+  OtherAdditionalAmountBase: string;
+  OtherDeductionAmount: string;
+  OtherDeductionAmountBase: string;
+  PackingIndent: boolean;
+  PreNetAmount: string;
+  PreNetAmountBase: string;
+  Quantity: string;
+  SearchItemID: number;
+  ShippingAddress: string;
+  StoreID: number;
+  StoreName: string;
+  SubCategoryID: number | null;
+  SubCategoryName: string | null;
+  SupplierID: number;
+  SupplierName: string;
+  TaxMasterID: number;
+  TaxMasterName: string;
+  TaxPayerType: string;
+  TotalCESSAmt: number;
+  TotalCGSTAmt: number;
+  TotalDiscount: string;
+  TotalDiscountBase: number;
+  TotalIGSTAmt: number;
+  TotalQuantity: string;
+  TotalSGSTAmt: number;
+  TotalTax: string;
+  TotalTaxBase: string;
+  TotalUTGSTAmt: number;
+  TotalVATAmount: number;
+  ValidDate: string | null;
+  ValidDays: number;
+  companyId?: number;
+  finYearId?: number;
+}
+
+export interface SavePurchaseOrderResult {
+  Success: boolean;
+  Message: string;
+  Id: number;
+  Info: string;
+}
+
+// ─── GetSelectedPO ────────────────────────────────────────────────────────────
+export interface SelectedPODetail {
+  OrderTID: number;
+  OrderMasterID: number;
+  PurchaseOrderM: null;
+  IndentDetailID: number | null;
+  IndentOrderT: null;
+  PurchasedQty: number | null;
+  GReceiptQty: number | null;
+  POClosed: boolean | null;
+  ItemID: number;
+  ItemM: null;
+  ItemDescription: string | null;
+  BatchID: number | null;
+  ItemBatchM: null;
+  BatchNo: string | null;
+  Quantity: number;
+  PurchaseRate: number;
+  UnitMultiplier: number;
+  SalesRate: number;
+  MRP: number;
+  Free: number;
+  DiscountPercentage: number;
+  DiscountAmount: number;
+  TaxOnMRP: boolean;
+  SGSTPer: number | null;
+  CGSTPer: number | null;
+  IGSTPer: number | null;
+  UTGSTPer: number | null;
+  CESSPer: number | null;
+  VATPer: number | null;
+  SGSTAmt: number | null;
+  CGSTAmt: number | null;
+  IGSTAmt: number | null;
+  UTGSTAmt: number | null;
+  CESSAmt: number | null;
+  VATAmt: number | null;
+  TaxID: number | null;
+  AccTaxM: null;
+  TaxPercentage: number;
+  TaxRate: number;
+  ServiceTaxID: number | null;
+  ServiceTax: null;
+  ServiceTaxPercentage: number | null;
+  Amount: number;
+  SalesMargin: number;
+  NetPRate: number;
+  UnitID: number;
+  ItemUnit: null;
+  WsRate: number;
+  BarCode: string | null;
+  CompanyID: number;
+  BranchID: number;
+  FinYearID: number;
+  Status: boolean;
+  UserID: number;
+  EntryDate: string;
+  ModifiedUserID: number | null;
+  ModifiedDate: string | null;
+  PurOrdTGuid: string;
+  InpassQty: number;
+  SpecID: number | null;
+  RequiredDate: string | null;
+  Remarks: string | null;
+  BillQty: number;
+  BillUnitID: number | null;
+  GSTCategoryTID: number | null;
+  IndentMasterID: number | null;
+  IndentOrderM: null;
+  PurchaseDate: string;
+  ItemName: string;
+  ItemCode: string;
+  Label: string | null;
+  StockTypeID: number;
+  StoreID: number;
+  BatchName: string | null;
+  OldPurchaseRate: number;
+  OldSalesRate: number;
+  OldMRP: number;
+  OldBatchName: string | null;
+  OldManDate: string | null;
+  OldExpDate: string | null;
+  SalesMarginPer: number | null;
+  OrderedQty: number | null;
+  IndentQty: number;
+  BalanceQty: number | null;
+  Mrp: number;
+  Spec: string | null;
+  Unit: string | null;
+  BillUnit: string | null;
+  Hsn: string;
+  GstCategoryDesc: string | null;
+}
+
+export interface SelectedPO {
+  OrderID: number;
+  OrderNo: string;
+  OrderDate: string;
+  SupplierID: number;
+  PartyMasterM: null;
+  StoreID: number;
+  StoreM: null;
+  DocumentID: number;
+  DocumentM: null;
+  TotalQuantity: number;
+  ExpectedDate: string | null;
+  Attention: string;
+  BillwiseDiscountPer: number;
+  BillwiseDiscountAmt: number;
+  InvoiceTaxTypeID: number;
+  TotalSGSTAmt: number;
+  TotalCGSTAmt: number;
+  TotalIGSTAmt: number;
+  TotalUTGSTAmt: number;
+  TotalCESSAmt: number;
+  TotalVATAmount: number;
+  TotalCSTAmount: number;
+  TotalServiceTaxAmount: number;
+  GrossAmount: number;
+  TotalDiscount: number;
+  TotalTax: number;
+  RoundOffAmount: number;
+  NetAmount: number;
+  POCompleted: boolean;
+  ValidDays: number;
+  ValidDate: string | null;
+  Remarks: string | null;
+  CompanyID: number;
+  BranchID: number;
+  FinYearID: number;
+  Status: boolean;
+  UserID: number;
+  EntryDate: string;
+  ModifiedUserID: number | null;
+  ModifiedDate: string | null;
+  PurOrdMGuid: string;
+  InpassCompleted: boolean | null;
+  ItemTypeID: number;
+  DepartmentID: number | null;
+  SubDepartmentID: number | null;
+  CategoryID: number | null;
+  SubCategoryID: number | null;
+  CurrencyID: number;
+  ExRate: number;
+  Conditions: string;
+  OtherAdditionalAmount: number;
+  OtherDeductionAmount: number;
+  Completed: boolean;
+  MsgSent: boolean;
+  IndentID: number | null;
+  ShippingAddress: string;
+  BillingAddress: string;
+  LstPurchaseOrderDetails: SelectedPODetail[];
+  LstPOAdditionalDetails: unknown[];
+  SupplierName: string;
+  InvoiceTaxType: string;
+  StoreName: string;
+  GrossTotal: number | null;
+  PreTotal: number | null;
+  ItemType: string | null;
+  InpassCount: number;
+  Approve: boolean;
+  ApprovedDate: string | null;
+  ApprovedBy: string | null;
+  DepartmentName: string | null;
+  SubDepartmentName: string | null;
+  CategoryName: string | null;
+  SubCategoryName: string | null;
+  Currency: string;
+  DocumentName: string;
+  Quantity: number;
+  DisApprovedDate: string | null;
+  DisApprovedBy: string | null;
+  IndentNo: string | null;
+  AdvPaid: number | null;
+  DisapproveRemark: string | null;
+  IsGST: boolean;
+  IsVAT: boolean;
+  TaxMasterID: number;
+  EnableAddCharges: boolean;
+  EnableDedCharges: boolean;
+  IsLocal: boolean;
+  TaxPayerType: string;
+  PackingIndent: boolean;
+}
+
+export interface FetchSelectedPOParams {
+  orderID: number;
+  companyId?: number;
+  finYearId?: number;
+}
+
 // ─── State ─────────────────────────────────────────────────────────────────────
 interface PurchaseOrderState {
   purchaseOrders: PurchaseOrderRow[];
@@ -329,7 +745,12 @@ interface PurchaseOrderState {
   importInvoiceTaxType: ImportInvoiceTaxType | null;
   allInvoiceTaxTypes: AllInvoiceTaxType[];
   stores: Store[];
-  suppliers: Supplier[]; 
+  suppliers: Supplier[];
+  itemDetailsForOpeningStock: ItemDetailsForOpeningStock[];
+  productionItemDetails: ProductionItemDetail[];
+  selectedItemForPR: SelectedItemForPR[];
+  itemUnits: ItemUnit[];
+  updatePurchaseOrderResult: UpdatePurchaseOrderResult | null;
   loading: boolean;
   error: string | null;
   itemsLoading: boolean;
@@ -355,14 +776,30 @@ interface PurchaseOrderState {
   allInvoiceTaxTypesError: string | null;
   storesLoading: boolean;
   storesError: string | null;
-  suppliersLoading: boolean; 
-  suppliersError: string | null; 
+  suppliersLoading: boolean;
+  suppliersError: string | null;
   selectedIndentItems: SelectedIndentItem[];
   selectedIndentItemsLoading: boolean;
   selectedIndentItemsError: string | null;
   selectedIndentForPR: SelectedIndentForPR[];
   selectedIndentForPRLoading: boolean;
   selectedIndentForPRError: string | null;
+  itemDetailsForOpeningStockLoading: boolean;
+  itemDetailsForOpeningStockError: string | null;
+  productionItemDetailsLoading: boolean;
+  productionItemDetailsError: string | null;
+  selectedItemForPRLoading: boolean;
+  selectedItemForPRError: string | null;
+  savePurchaseOrderLoading: boolean;
+  savePurchaseOrderError: string | null;
+  savePurchaseOrderResult: SavePurchaseOrderResult | null;
+  selectedPO: SelectedPO | null;
+  selectedPOLoading: boolean;
+  selectedPOError: string | null;
+  itemUnitsLoading: boolean;
+  itemUnitsError: string | null;
+  updatePurchaseOrderLoading: boolean;
+  updatePurchaseOrderError: string | null;
 }
 
 export interface PurchaseOrderDueDays {
@@ -384,6 +821,54 @@ export interface PurchaseOrderDueDays {
   PrefGUID: string;
 }
 
+export interface UpdatePurchaseOrderPayload extends SavePurchaseOrderPayload {
+  OrderID: number;
+  POCompleted?: boolean;
+  RoundOff?: boolean;
+  RoundOffAmount?: number;
+  TotalCSTAmount?: number;
+  TotalServiceTaxAmount?: number;
+  MsgSent?: boolean;
+  PurOrdMGuid?: string;
+  PartyMasterM?: null;
+  StoreM?: null;
+  DocumentM?: null;
+  ModifiedDate?: string | null;
+  ModifiedUserID?: number | null;
+  LstPOAdditionalDetails?: unknown[];
+  ValidDateStr?: string | null;
+  GrossTotal?: null;
+  PreTotal?: null;
+  InpassCompleted?: null;
+  InpassCount?: number;
+  ItemTypeID?: number;
+  ItemType?: string | null;
+  DepartmentID?: number | null;
+  DepartmentName?: string | null;
+  SubDepartmentID?: number | null;
+  SubDepartmentName?: string | null;
+  Approve?: boolean | null;
+  ApprovedDate?: string | null;
+  ApprovedBy?: string | null;
+  DisApprovedDate?: string | null;
+  DisApprovedBy?: string | null;
+  DisapproveRemark?: string | null;
+  AdvPaid?: number | null;
+  BranchID?: number;
+  CompanyID?: number;
+  FinYearID?: number;
+  UserID?: number;
+  Status?: boolean;
+  EntryDate?: string;
+}
+
+export interface UpdatePurchaseOrderResult {
+  Success: boolean;
+  Message: string;
+  Id: number;
+  Info: string | null;
+}
+
 // ─── API Response Shape (reused where applicable) ──────────────────────────────
 interface ApiResponse {
   Server: {
@@ -391,6 +876,7 @@ interface ApiResponse {
     Message: string;
     Data: any;
     Id: number;
+    Info: string;
   };
 }
 
@@ -518,6 +1004,54 @@ export const fetchItems = createAsyncThunk<
       }
 
       return json.Server.Data as Item[];
+    } catch (err: unknown) {
+      return rejectWithValue(err instanceof Error ? err.message : "Network error");
+    }
+  }
+);
+
+// ─── GetItemDetailsForOpeningStock ────────────────────────────────
+export const fetchItemDetailsForOpeningStock = createAsyncThunk<
+  ItemDetailsForOpeningStock[],
+  FetchItemDetailsForOpeningStockParams | undefined,
+  { state: RootState; rejectValue: string }
+>(
+  "purchaseOrder/fetchItemDetailsForOpeningStock",
+  async (params = {}, { rejectWithValue, getState }) => {
+    const token = getCleanToken(getState());
+    if (!token) {
+      return rejectWithValue("No authentication token found. Please login again.");
+    }
+
+    const searchStr = params.searchStr ?? "";
+    const companyId = params.companyId ?? 1;
+    const finYearId = params.finYearId ?? 2;
+
+    try {
+      const url = new URL("https://erp.glitzit.com/service/api/Item/GetItemDetailsForOpeningStock");
+      url.searchParams.set("searchStr", searchStr);
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+          "x-company-id": String(companyId),
+          "x-finyear-id": String(finYearId),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json: ApiResponse = await response.json();
+
+      if (!json?.Server?.Success) {
+        return rejectWithValue(json?.Server?.Message ?? "Failed to fetch item details for opening stock");
+      }
+
+      return json.Server.Data as ItemDetailsForOpeningStock[];
     } catch (err: unknown) {
       return rejectWithValue(err instanceof Error ? err.message : "Network error");
     }
@@ -1174,6 +1708,315 @@ export const fetchSelectedIndentForPR = createAsyncThunk<
   }
 );
 
+export const fetchProductionItemDetails = createAsyncThunk<
+  ProductionItemDetail[],
+  FetchProductionItemDetailsParams | undefined,
+  { state: RootState; rejectValue: string }
+>(
+  "purchaseOrder/fetchProductionItemDetails",
+  async (params = {}, { rejectWithValue, getState }) => {
+    const token = getCleanToken(getState());
+    if (!token) {
+      return rejectWithValue("No authentication token found. Please login again.");
+    }
+
+    const {
+      asMode = "II",
+      customerCode = "",
+      customerId = 0,
+      designCode = "",
+      invoiceTaxTypeId = 1,
+      itemCode = "",
+      itemId = 0,
+      companyId = 1,
+      finYearId = 2,
+    } = params;
+
+    try {
+      const url = new URL("https://erp.glitzit.com/service/api/Item/GetProductionItemDetails");
+
+      url.searchParams.set("asMode", asMode);
+      url.searchParams.set("customerCode", customerCode);
+      url.searchParams.set("customerId", String(customerId));
+      url.searchParams.set("designCode", designCode);
+      url.searchParams.set("invoiceTaxTypeId", String(invoiceTaxTypeId));
+      url.searchParams.set("itemCode", itemCode);
+      url.searchParams.set("itemId", String(itemId));
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+          "x-company-id": String(companyId),
+          "x-finyear-id": String(finYearId),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json: ApiResponse = await response.json();
+
+      if (!json?.Server?.Success) {
+        return rejectWithValue(json?.Server?.Message ?? "Failed to fetch production item details");
+      }
+
+      return json.Server.Data as ProductionItemDetail[];
+    } catch (err: unknown) {
+      return rejectWithValue(err instanceof Error ? err.message : "Network error");
+    }
+  }
+);
+
+// Fetch Selected Item For PR (single item when user selects from dropdown)
+export const fetchSelectedItemForPR = createAsyncThunk<
+  SelectedItemForPR[],
+  FetchSelectedItemForPRParams,
+  { state: RootState; rejectValue: string }
+>(
+  "purchaseOrder/fetchSelectedItemForPR",
+  async (params, { rejectWithValue, getState }) => {
+    const token = getCleanToken(getState());
+    if (!token) {
+      return rejectWithValue("No authentication token found. Please login again.");
+    }
+
+    const {
+      itemID,
+      invoiceTaxTypeID,
+      companyId = 1,
+      finYearId = 2,
+    } = params;
+
+    try {
+      const url = new URL("https://erp.glitzit.com/service/api/PurchaseOrder/GetSelectedItemForPR");
+
+      url.searchParams.set("ItemID", String(itemID));
+      url.searchParams.set("InvoiceTaxTypeID", String(invoiceTaxTypeID));
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+          "x-company-id": String(companyId),
+          "x-finyear-id": String(finYearId),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json: ApiResponse = await response.json();
+
+      if (!json?.Server?.Success) {
+        return rejectWithValue(json?.Server?.Message ?? "Failed to fetch selected item for PR");
+      }
+
+      return json.Server.Data as SelectedItemForPR[];
+    } catch (err: unknown) {
+      return rejectWithValue(err instanceof Error ? err.message : "Network error");
+    }
+  }
+);
+
+// ─── SaveChanges ───────────────────────────────────────────────────────────────
+export const savePurchaseOrder = createAsyncThunk<
+  SavePurchaseOrderResult,
+  SavePurchaseOrderPayload,
+  { state: RootState; rejectValue: string }
+>(
+  "purchaseOrder/savePurchaseOrder",
+  async (params, { rejectWithValue, getState }) => {
+    const token = getCleanToken(getState());
+    if (!token) {
+      return rejectWithValue("No authentication token found. Please login again.");
+    }
+
+    const { companyId = 1, finYearId = 2, ...payload } = params;
+
+    try {
+      const response = await fetch(
+        "https://erp.glitzit.com/service/api/PurchaseOrder/SaveChanges",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+            "x-company-id": String(companyId),
+            "x-finyear-id": String(finYearId),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json: ApiResponse = await response.json();
+
+      if (!json?.Server?.Success) {
+        return rejectWithValue(json?.Server?.Message ?? "Failed to save purchase order");
+      }
+
+      return {
+        Success: json.Server.Success,
+        Message: json.Server.Message,
+        Id: json.Server.Id,
+        Info: json.Server.Info,
+      } as SavePurchaseOrderResult;
+    } catch (err: unknown) {
+      return rejectWithValue(err instanceof Error ? err.message : "Network error");
+    }
+  }
+);
+
+// ─── GetSelectedPO ────────────────────────────────────────────────────────────
+export const fetchSelectedPO = createAsyncThunk<
+  SelectedPO,
+  FetchSelectedPOParams,
+  { state: RootState; rejectValue: string }
+>(
+  "purchaseOrder/fetchSelectedPO",
+  async (params, { rejectWithValue, getState }) => {
+    const token = getCleanToken(getState());
+    if (!token) {
+      return rejectWithValue("No authentication token found. Please login again.");
+    }
+
+    const { orderID, companyId = 1, finYearId = 2 } = params;
+
+    try {
+      const url = new URL("https://erp.glitzit.com/service/api/PurchaseOrder/GetSelectedPO");
+      url.searchParams.set("OrderID", String(orderID));
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+          "x-company-id": String(companyId),
+          "x-finyear-id": String(finYearId),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json: ApiResponse = await response.json();
+
+      if (!json?.Server?.Success) {
+        return rejectWithValue(json?.Server?.Message ?? "Failed to fetch selected purchase order");
+      }
+
+      return json.Server.Data as SelectedPO;
+    } catch (err: unknown) {
+      return rejectWithValue(err instanceof Error ? err.message : "Network error");
+    }
+  }
+);
+
+export const fetchItemUnits = createAsyncThunk<
+  ItemUnit[],
+  FetchItemUnitsParams | undefined,
+  { state: RootState; rejectValue: string }
+>(
+  "purchaseOrder/fetchItemUnits",
+  async (params = {}, { rejectWithValue, getState }) => {
+    const token = getCleanToken(getState());
+    if (!token) {
+      return rejectWithValue("No authentication token found. Please login again.");
+    }
+
+    const { searchStr = "", companyId = 1, finYearId = 2 } = params;
+
+    try {
+      const url = new URL("https://erp.glitzit.com/service/api/ItemUnit/GetItemUnitBySearch");
+      url.searchParams.set("searchStr", searchStr);
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+          "x-company-id": String(companyId),
+          "x-finyear-id": String(finYearId),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json = await response.json();
+
+      if (!Array.isArray(json)) {
+        return rejectWithValue("Invalid response format");
+      }
+
+      return json as ItemUnit[];
+    } catch (err: unknown) {
+      return rejectWithValue(err instanceof Error ? err.message : "Network error");
+    }
+  }
+);
+
+export const updatePurchaseOrder = createAsyncThunk<
+  UpdatePurchaseOrderResult,
+  UpdatePurchaseOrderPayload,
+  { state: RootState; rejectValue: string }
+>(
+  "purchaseOrder/updatePurchaseOrder",
+  async (params, { rejectWithValue, getState }) => {
+    const token = getCleanToken(getState());
+    if (!token) {
+      return rejectWithValue("No authentication token found. Please login again.");
+    }
+
+    const { companyId = 1, finYearId = 2, ...payload } = params;
+
+    try {
+      const response = await fetch(
+        "https://erp.glitzit.com/service/api/PurchaseOrder/UpdateChanges",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+            "x-company-id": String(companyId),
+            "x-finyear-id": String(finYearId),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const json: ApiResponse = await response.json();
+
+      if (!json?.Server?.Success) {
+        return rejectWithValue(json?.Server?.Message ?? "Failed to update purchase order");
+      }
+
+      return {
+        Success: json.Server.Success,
+        Message: json.Server.Message,
+        Id: json.Server.Id,
+        Info: json.Server.Info,
+      } as UpdatePurchaseOrderResult;
+    } catch (err: unknown) {
+      return rejectWithValue(err instanceof Error ? err.message : "Network error");
+    }
+  }
+);
+
 // ─── Slice ─────────────────────────────────────────────────────────────────────
 const initialState: PurchaseOrderState = {
   purchaseOrders: [],
@@ -1191,6 +2034,11 @@ const initialState: PurchaseOrderState = {
   allInvoiceTaxTypes: [],
   stores: [],
   suppliers: [],
+  itemDetailsForOpeningStock: [],
+  productionItemDetails: [],
+  selectedItemForPR: [],
+  itemUnits: [],
+  updatePurchaseOrderResult: null,
   loading: false,
   error: null,
   itemsLoading: false,
@@ -1215,14 +2063,30 @@ const initialState: PurchaseOrderState = {
   allInvoiceTaxTypesError: null,
   storesLoading: false,
   storesError: null,
-  suppliersLoading: false, 
-  suppliersError: null, 
+  suppliersLoading: false,
+  suppliersError: null,
   selectedIndentItems: [],
   selectedIndentItemsLoading: false,
   selectedIndentItemsError: null,
   selectedIndentForPR: [],
   selectedIndentForPRLoading: false,
   selectedIndentForPRError: null,
+  itemDetailsForOpeningStockLoading: false,
+  itemDetailsForOpeningStockError: null,
+  productionItemDetailsLoading: false,
+  productionItemDetailsError: null,
+  selectedItemForPRLoading: false,
+  selectedItemForPRError: null,
+  savePurchaseOrderLoading: false,
+  savePurchaseOrderError: null,
+  savePurchaseOrderResult: null,
+  selectedPO: null,
+  selectedPOLoading: false,
+  selectedPOError: null,
+  itemUnitsLoading: false,
+  itemUnitsError: null,
+  updatePurchaseOrderLoading: false,
+  updatePurchaseOrderError: null,
 };
 
 const purchaseOrderSlice = createSlice({
@@ -1277,7 +2141,7 @@ const purchaseOrderSlice = createSlice({
       state.stores = [];
       state.storesError = null;
     },
-    clearAllSuppliers(state) { 
+    clearAllSuppliers(state) {
       state.suppliers = [];
       state.suppliersError = null;
     },
@@ -1288,6 +2152,34 @@ const purchaseOrderSlice = createSlice({
     clearSelectedIndentForPR(state) {
       state.selectedIndentForPR = [];
       state.selectedIndentForPRError = null;
+    },
+    clearItemDetailsForOpeningStock(state) {
+      state.itemDetailsForOpeningStock = [];
+      state.itemDetailsForOpeningStockError = null;
+    },
+    clearProductionItemDetails(state) {
+      state.productionItemDetails = [];
+      state.productionItemDetailsError = null;
+    },
+    clearSelectedItemForPR(state) {
+      state.selectedItemForPR = [];
+      state.selectedItemForPRError = null;
+    },
+    clearSavePurchaseOrder(state) {
+      state.savePurchaseOrderResult = null;
+      state.savePurchaseOrderError = null;
+    },
+    clearSelectedPO(state) {
+      state.selectedPO = null;
+      state.selectedPOError = null;
+    },
+    clearItemUnits(state) {
+      state.itemUnits = [];
+      state.itemUnitsError = null;
+    },
+    clearUpdatePurchaseOrder(state) {
+      state.updatePurchaseOrderResult = null;
+      state.updatePurchaseOrderError = null;
     },
   },
   extraReducers: (builder) => {
@@ -1318,6 +2210,20 @@ const purchaseOrderSlice = createSlice({
       .addCase(fetchItems.rejected, (state, action) => {
         state.itemsLoading = false;
         state.itemsError = action.payload ?? "Failed to load items";
+      })
+
+      // fetchItemDetailsForOpeningStock
+      .addCase(fetchItemDetailsForOpeningStock.pending, (state) => {
+        state.itemDetailsForOpeningStockLoading = true;
+        state.itemDetailsForOpeningStockError = null;
+      })
+      .addCase(fetchItemDetailsForOpeningStock.fulfilled, (state, action) => {
+        state.itemDetailsForOpeningStockLoading = false;
+        state.itemDetailsForOpeningStock = action.payload;
+      })
+      .addCase(fetchItemDetailsForOpeningStock.rejected, (state, action) => {
+        state.itemDetailsForOpeningStockLoading = false;
+        state.itemDetailsForOpeningStockError = action.payload ?? "Failed to load item details for opening stock";
       })
 
       // fetchPurchaseOrderDueDays
@@ -1391,6 +2297,7 @@ const purchaseOrderSlice = createSlice({
         state.remainingIndentsLoading = false;
         state.remainingIndentsError = action.payload ?? "Failed to load remaining indents for PO";
       })
+
       // fetchUserTableColumns
       .addCase(fetchUserTableColumns.pending, (state) => {
         state.userTableColumnsLoading = true;
@@ -1446,6 +2353,7 @@ const purchaseOrderSlice = createSlice({
         state.allInvoiceTaxTypesLoading = false;
         state.allInvoiceTaxTypesError = action.payload ?? "Failed to load all invoice tax types";
       })
+
       // fetchStores
       .addCase(fetchStores.pending, (state) => {
         state.storesLoading = true;
@@ -1499,7 +2407,91 @@ const purchaseOrderSlice = createSlice({
       .addCase(fetchSelectedIndentForPR.rejected, (state, action) => {
         state.selectedIndentForPRLoading = false;
         state.selectedIndentForPRError = action.payload ?? "Failed to load selected indent for PR";
-      });
+      })
+
+      // fetchProductionItemDetails
+      .addCase(fetchProductionItemDetails.pending, (state) => {
+        state.productionItemDetailsLoading = true;
+        state.productionItemDetailsError = null;
+      })
+      .addCase(fetchProductionItemDetails.fulfilled, (state, action) => {
+        state.productionItemDetailsLoading = false;
+        state.productionItemDetails = action.payload;
+      })
+      .addCase(fetchProductionItemDetails.rejected, (state, action) => {
+        state.productionItemDetailsLoading = false;
+        state.productionItemDetailsError = action.payload ?? "Failed to load production item details";
+      })
+
+      // fetchSelectedItemForPR
+      .addCase(fetchSelectedItemForPR.pending, (state) => {
+        state.selectedItemForPRLoading = true;
+        state.selectedItemForPRError = null;
+      })
+      .addCase(fetchSelectedItemForPR.fulfilled, (state, action) => {
+        state.selectedItemForPRLoading = false;
+        state.selectedItemForPR = action.payload;
+      })
+      .addCase(fetchSelectedItemForPR.rejected, (state, action) => {
+        state.selectedItemForPRLoading = false;
+        state.selectedItemForPRError = action.payload ?? "Failed to load selected item for PR";
+      })
+
+      // savePurchaseOrder
+      .addCase(savePurchaseOrder.pending, (state) => {
+        state.savePurchaseOrderLoading = true;
+        state.savePurchaseOrderError = null;
+        state.savePurchaseOrderResult = null;
+      })
+      .addCase(savePurchaseOrder.fulfilled, (state, action) => {
+        state.savePurchaseOrderLoading = false;
+        state.savePurchaseOrderResult = action.payload;
+      })
+      .addCase(savePurchaseOrder.rejected, (state, action) => {
+        state.savePurchaseOrderLoading = false;
+        state.savePurchaseOrderError = action.payload ?? "Failed to save purchase order";
+      })
+
+      // fetchSelectedPO
+      .addCase(fetchSelectedPO.pending, (state) => {
+        state.selectedPOLoading = true;
+        state.selectedPOError = null;
+      })
+      .addCase(fetchSelectedPO.fulfilled, (state, action) => {
+        state.selectedPOLoading = false;
+        state.selectedPO = action.payload;
+      })
+      .addCase(fetchSelectedPO.rejected, (state, action) => {
+        state.selectedPOLoading = false;
+        state.selectedPOError = action.payload ?? "Failed to load selected purchase order";
+      })
+      // fetchItemUnits
+      .addCase(fetchItemUnits.pending, (state) => {
+        state.itemUnitsLoading = true;
+        state.itemUnitsError = null;
+      })
+      .addCase(fetchItemUnits.fulfilled, (state, action) => {
+        state.itemUnitsLoading = false;
+        state.itemUnits = action.payload;
+      })
+      .addCase(fetchItemUnits.rejected, (state, action) => {
+        state.itemUnitsLoading = false;
+        state.itemUnitsError = action.payload ?? "Failed to load item units";
+      })
+      // updatePurchaseOrder
+      .addCase(updatePurchaseOrder.pending, (state) => {
+        state.updatePurchaseOrderLoading = true;
+        state.updatePurchaseOrderError = null;
+        state.updatePurchaseOrderResult = null;
+      })
+      .addCase(updatePurchaseOrder.fulfilled, (state, action) => {
+        state.updatePurchaseOrderLoading = false;
+        state.updatePurchaseOrderResult = action.payload;
+      })
+      .addCase(updatePurchaseOrder.rejected, (state, action) => {
+        state.updatePurchaseOrderLoading = false;
+        state.updatePurchaseOrderError = action.payload ?? "Failed to update purchase order";
+      })
   },
 });
 
@@ -1516,9 +2508,16 @@ export const {
   clearImportInvoiceTaxTypeDetails,
   clearAllInvoiceTaxTypes,
   clearStores,
-  clearAllSuppliers, 
+  clearAllSuppliers,
   clearSelectedIndentItems,
   clearSelectedIndentForPR,
+  clearItemDetailsForOpeningStock,
+  clearProductionItemDetails,
+  clearSelectedItemForPR,
+  clearSavePurchaseOrder,
+  clearSelectedPO,
+  clearItemUnits,
+  clearUpdatePurchaseOrder,
 } = purchaseOrderSlice.actions;
 
 export default purchaseOrderSlice.reducer;
