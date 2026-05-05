@@ -77,7 +77,7 @@ const sections: Section[] = [
       { label: "Goods Receipt", icon: <ClipboardList size={20} /> },
       { label: "Purchase", icon: <ShoppingCart size={20} />, href: "/Inventory/purchase" },
       { label: "Local Purchase", icon: <ShoppingCart size={20} /> },
-      { label: "Purchase Return", icon: <RefreshCw size={20} /> },
+      { label: "Purchase Return", icon: <RefreshCw size={20} />, href: "/Inventory/purchase-return" },
       { label: "Service Bill", icon: <ShoppingCart size={20} /> },
       { label: "Service-Bill Return", icon: <RefreshCw size={20} /> },
     ],

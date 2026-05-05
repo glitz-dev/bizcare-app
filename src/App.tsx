@@ -10,6 +10,7 @@ import PurchaseIndent from './pages/procurement/PurchaseIndent'
 import { Toaster } from './components/ui/sonner'
 import PurchaseOrder from './pages/procurement/PurchaseOrder'
 import Purchase from './pages/procurement/Purchase'
+import PurchaseReturn from './pages/procurement/PurchaseReturn'
 
 const App = () => {
   return (
@@ -28,6 +29,7 @@ const App = () => {
           <Route path="/Inventory/indentdetail" element ={<PurchaseIndent />} />
           <Route path="/Inventory/purchase-order" element ={<PurchaseOrder />} />
           <Route path="/Inventory/purchase" element={<Purchase />} />
+          <Route path="/Inventory/purchase-return" element={<PurchaseReturn />} />
         </Route>
         
         {/* 404 Route */}
