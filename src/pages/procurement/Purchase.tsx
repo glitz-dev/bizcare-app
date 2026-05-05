@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { ShoppingCart, Eye, Pencil, Megaphone } from "lucide-react";
 import { DataTable, FilterHeader, StatusBadge } from "@/common/DataTable";
 import type { Column } from "react-data-grid";
@@ -14,7 +15,6 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Convert JS date string "YYYY-MM-DD" → API format "DD-MM-YYYY" */
 const toApiDate = (isoDate: string): string => {
   const [y, m, d] = isoDate.split("-");
   return `${d}-${m}-${y}`;
@@ -39,6 +39,24 @@ const Purchase = () => {
   const [toDate, setToDate] = useState(todayIso);
 
   const [showForm, setShowForm] = useState(false);
+
+  // Called by the form on both cancel (no arg) and successful save (with invoiceNo)
+  const handleFormClose = useCallback((invoiceNo?: string) => {
+    setShowForm(false);
+    if (invoiceNo) {
+      // Re-fetch the list so the new record appears immediately
+      dispatch(
+        fetchAllPurchases({
+          FromDate: toApiDate(fromDate),
+          ToDate: toApiDate(toDate),
+          rowsPerPage,
+          documentType,
+          currentPage: 1,
+          searchStr: "",
+        })
+      );
+    }
+  }, [dispatch, fromDate, toDate, rowsPerPage, documentType]);
 
   // ── Map API PurchaseRecord → table row shape ──
   const rows = useMemo(
@@ -269,7 +287,7 @@ const Purchase = () => {
 
   // ── Full-page form ──
   if (showForm) {
-    return <CreatePurchaseForm onClose={() => setShowForm(false)} />;
+    return <CreatePurchaseForm onClose={handleFormClose} />;
   }
 
   return (
