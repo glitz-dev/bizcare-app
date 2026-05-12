@@ -262,9 +262,12 @@ export interface SavePurchaseReturnBody {
     RoundOff: boolean;
     TaxPercHead: string;
     TaxAmountHead: string;
+    Remarks: string;
     SupInvoiceDate: string | null;
     ChequeDate: string | null;
     LstPurchaseReturnDetails: PurchaseReturnDetailBody[];
+    RoundOffAmount: number;
+    RoundOffAmountBase: number;
 }
 
 export interface SavePurchaseReturnResult {
@@ -273,7 +276,7 @@ export interface SavePurchaseReturnResult {
     MessageId: string | null;
     Data: null;
     Id: number;
-    Info: string;         // e.g. "PR-94" — the generated return number
+    Info: string;
     Approve: null;
 }
 

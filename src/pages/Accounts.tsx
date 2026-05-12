@@ -2,56 +2,23 @@
 
 import { useState } from "react";
 import {
-  FileText,
-  RefreshCw,
-  BarChart2,
-  Receipt,
-  ChevronDown,
-  CreditCard,
-  Landmark,
-  BookOpen,
-  HandCoins,
-  Scale,
-  ScrollText,
-  ClipboardCheck,
-  Wallet,
-  Building2,
-  FileBarChart,
-  BookMarked,
-  CalendarDays,
-  Layers,
-  StickyNote,
-  ShieldCheck,
-  TrendingUp,
+  FileText, RefreshCw, BarChart2, Receipt, ChevronDown, CreditCard,
+  Landmark, BookOpen, HandCoins, Scale, ScrollText, ClipboardCheck,
+  Wallet, Building2, FileBarChart, BookMarked, CalendarDays, Layers,
+  StickyNote, ShieldCheck, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-interface MenuItem {
-  label: string;
-  icon: React.ReactNode;
-  active?: boolean;
-  badge?: string;
-}
-
-interface SubSection {
-  label: string;
-  items: MenuItem[];
-}
-
+interface MenuItem { label: string; icon: React.ReactNode; active?: boolean; badge?: string; }
+interface SubSection { label: string; items: MenuItem[]; }
 interface Section {
-  id: string;
-  title: string;
-  description: string;
-  openBg: string;
-  activeTile: string;
-  hoverTile: string;
-  dotColor: string;
-  subSectionLabelColor: string;
-  subSectionDivider: string;
-  items?: MenuItem[];
-  subSections?: SubSection[];
+  id: string; title: string; description: string; 
+  openBg: string; activeTile: string; hoverTile: string; 
+  dotColor: string; dotDark: string;
+  subSectionLabelColor: string; subSectionDivider: string;
+  items?: MenuItem[]; subSections?: SubSection[];
 }
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
@@ -61,12 +28,13 @@ const sections: Section[] = [
     id: "accounts",
     title: "Accounts",
     description: "Vouchers, payments, receipts & chart of accounts",
-    openBg: "bg-blue-50 border-blue-200",
-    activeTile: "bg-blue-600 text-white border-transparent shadow-blue-200 shadow-lg",
-    hoverTile: "hover:bg-blue-600 hover:text-white hover:border-transparent hover:shadow-lg hover:shadow-blue-200",
+    openBg: "bg-blue-50/50 border-blue-100 dark:bg-blue-950/30 dark:border-blue-900/50",
+    activeTile: "bg-gradient-to-br from-blue-600 to-blue-700 text-white border-transparent shadow-md shadow-blue-200 dark:shadow-blue-900/50",
+    hoverTile: "hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 hover:shadow-sm dark:hover:bg-blue-950/50 dark:hover:text-blue-300 dark:hover:border-blue-800",
     dotColor: "bg-blue-500",
-    subSectionLabelColor: "text-blue-700",
-    subSectionDivider: "border-blue-100",
+    dotDark: "dark:bg-blue-400",
+    subSectionLabelColor: "text-blue-700 dark:text-blue-400",
+    subSectionDivider: "border-blue-100 dark:border-blue-900",
     subSections: [
       {
         label: "General",
@@ -95,12 +63,13 @@ const sections: Section[] = [
     id: "reports",
     title: "Reports",
     description: "Financial statements, ledgers & audit logs",
-    openBg: "bg-violet-50 border-violet-200",
-    activeTile: "bg-violet-600 text-white border-transparent shadow-violet-200 shadow-lg",
-    hoverTile: "hover:bg-violet-600 hover:text-white hover:border-transparent hover:shadow-lg hover:shadow-violet-200",
+    openBg: "bg-violet-50/50 border-violet-100 dark:bg-violet-950/30 dark:border-violet-900/50",
+    activeTile: "bg-gradient-to-br from-violet-600 to-violet-700 text-white border-transparent shadow-md shadow-violet-200 dark:shadow-violet-900/50",
+    hoverTile: "hover:bg-violet-50 hover:text-violet-700 hover:border-violet-200 hover:shadow-sm dark:hover:bg-violet-950/50 dark:hover:text-violet-300 dark:hover:border-violet-800",
     dotColor: "bg-violet-500",
-    subSectionLabelColor: "text-violet-700",
-    subSectionDivider: "border-violet-100",
+    dotDark: "dark:bg-violet-400",
+    subSectionLabelColor: "text-violet-700 dark:text-violet-400",
+    subSectionDivider: "border-violet-100 dark:border-violet-900",
     subSections: [
       {
         label: "General Reports",
@@ -133,12 +102,13 @@ const sections: Section[] = [
     id: "gstr1",
     title: "GSTR1",
     description: "GST outward supply returns",
-    openBg: "bg-emerald-50 border-emerald-200",
-    activeTile: "bg-emerald-600 text-white border-transparent shadow-emerald-200 shadow-lg",
-    hoverTile: "hover:bg-emerald-600 hover:text-white hover:border-transparent hover:shadow-lg hover:shadow-emerald-200",
+    openBg: "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-900/50",
+    activeTile: "bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border-transparent shadow-md shadow-emerald-200 dark:shadow-emerald-900/50",
+    hoverTile: "hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 hover:shadow-sm dark:hover:bg-emerald-950/50 dark:hover:text-emerald-300 dark:hover:border-emerald-800",
     dotColor: "bg-emerald-500",
-    subSectionLabelColor: "text-emerald-700",
-    subSectionDivider: "border-emerald-100",
+    dotDark: "dark:bg-emerald-400",
+    subSectionLabelColor: "text-emerald-700 dark:text-emerald-400",
+    subSectionDivider: "border-emerald-100 dark:border-emerald-900",
     items: [
       { label: "GSTR1-B2B Billwise", icon: <FileText size={20} /> },
       { label: "GSTR1-Hsn", icon: <FileText size={20} /> },
@@ -148,56 +118,52 @@ const sections: Section[] = [
     id: "gstr2",
     title: "GSTR2",
     description: "GST inward supply returns",
-    openBg: "bg-amber-50 border-amber-200",
-    activeTile: "bg-amber-600 text-white border-transparent shadow-amber-200 shadow-lg",
-    hoverTile: "hover:bg-amber-600 hover:text-white hover:border-transparent hover:shadow-lg hover:shadow-amber-200",
+    openBg: "bg-amber-50/50 border-amber-100 dark:bg-amber-950/30 dark:border-amber-900/50",
+    activeTile: "bg-gradient-to-br from-amber-600 to-amber-700 text-white border-transparent shadow-md shadow-amber-200 dark:shadow-amber-900/50",
+    hoverTile: "hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 hover:shadow-sm dark:hover:bg-amber-950/50 dark:hover:text-amber-300 dark:hover:border-amber-800",
     dotColor: "bg-amber-500",
-    subSectionLabelColor: "text-amber-700",
-    subSectionDivider: "border-amber-100",
+    dotDark: "dark:bg-amber-400",
+    subSectionLabelColor: "text-amber-700 dark:text-amber-400",
+    subSectionDivider: "border-amber-100 dark:border-amber-900",
     items: [
       { label: "GSTR2-Purchase", icon: <FileText size={20} /> },
     ],
   },
 ];
 
-// ─── Tile Grid ─────────────────────────────────────────────────────────────────
+// ─── Refined Tile Grid ────────────────────────────────────────────────────────
 
-function TileGrid({
-  items,
-  activeTile,
-  hoverTile,
-}: {
-  items: MenuItem[];
-  activeTile: string;
-  hoverTile: string;
-}) {
+function TileGrid({ items, activeTile, hoverTile }: { items: MenuItem[]; activeTile: string; hoverTile: string; }) {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
       {items.map((item) => (
         <button
           key={item.label}
           className={cn(
-            "relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl",
-            "border text-center cursor-pointer transition-all duration-150 shadow-sm",
+            "group relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl",
+            "border transition-all duration-300 min-w-0 cursor-pointer",
             item.active
               ? activeTile
-              : cn("bg-white border-slate-100 text-slate-600", hoverTile)
+              : cn(
+                  "bg-white/80 dark:bg-slate-800/60 backdrop-blur-sm border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 shadow-sm hover:-translate-y-1", 
+                  hoverTile
+                )
           )}
         >
           {item.badge && (
-            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+            <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
               {item.badge}
             </span>
           )}
-          <span>{item.icon}</span>
-          <span className="text-[11px] font-medium leading-tight">{item.label}</span>
+          <span className="transition-transform duration-300 group-hover:scale-110">{item.icon}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight w-full text-center">{item.label}</span>
         </button>
       ))}
     </div>
   );
 }
 
-// ─── Accordion Item ────────────────────────────────────────────────────────────
+// ─── Refined Accordion Item ───────────────────────────────────────────────────
 
 function SectionAccordion({ section }: { section: Section }) {
   const [open, setOpen] = useState(section.id === "accounts");
@@ -205,68 +171,53 @@ function SectionAccordion({ section }: { section: Section }) {
   return (
     <div
       className={cn(
-        "rounded-2xl border overflow-hidden transition-all duration-200",
-        open ? section.openBg : "bg-white border-slate-100"
+        "rounded-3xl border transition-all duration-500 ease-in-out overflow-hidden",
+        open 
+          ? `${section.openBg} shadow-xl shadow-slate-200/50 dark:shadow-black/30 border-white dark:border-transparent` 
+          : "bg-white dark:bg-slate-800/40 border-slate-100 dark:border-slate-700/50 shadow-sm"
       )}
     >
-      {/* Header */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-6 py-4 text-left cursor-pointer"
+        className="w-full flex items-center justify-between px-8 py-6 text-left cursor-pointer"
       >
-        <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              "w-2.5 h-2.5 rounded-full transition-colors",
-              open ? section.dotColor : "bg-slate-300"
-            )}
-          />
+        <div className="flex items-center gap-4">
+          <div className={cn(
+            "w-3 h-3 rounded-full animate-pulse",
+            open ? `${section.dotColor} ${section.dotDark}` : "bg-slate-200 dark:bg-slate-600"
+          )} />
           <div>
-            <p className={cn("font-semibold text-sm tracking-wide", open ? "text-slate-800" : "text-slate-500")}>
+            <p className={cn(
+              "font-bold text-base tracking-tight", 
+              open ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"
+            )}>
               {section.title}
             </p>
-            {open && (
-              <p className="text-xs text-slate-400 mt-0.5">{section.description}</p>
-            )}
+            {open && <p className="text-xs text-slate-500 dark:text-slate-400 font-medium opacity-80 mt-0.5">{section.description}</p>}
           </div>
         </div>
-        <ChevronDown
-          size={16}
-          className={cn(
-            "text-slate-400 transition-transform duration-300",
-            open && "rotate-180"
-          )}
-        />
+        <div className={cn(
+          "p-2 rounded-full transition-all", 
+          open ? "bg-white dark:bg-slate-700 shadow-inner" : "bg-slate-50 dark:bg-slate-700/50"
+        )}>
+          <ChevronDown size={18} className={cn("text-slate-400 dark:text-slate-500 transition-transform duration-500", open && "rotate-180")} />
+        </div>
       </button>
 
-      {/* Content */}
       {open && (
-        <div className="px-6 pb-6">
-          {/* Flat items */}
-          {section.items && (
-            <TileGrid
-              items={section.items}
-              activeTile={section.activeTile}
-              hoverTile={section.hoverTile}
-            />
-          )}
-
-          {/* Sub-sections */}
+        <div className="px-8 pb-8 animate-in fade-in slide-in-from-top-2 duration-300">
+          {section.items && <TileGrid items={section.items} activeTile={section.activeTile} hoverTile={section.hoverTile} />}
           {section.subSections && (
-            <div className="space-y-5">
-              {section.subSections.map((sub, i) => (
+            <div className="space-y-8">
+              {section.subSections.map((sub) => (
                 <div key={sub.label}>
-                  {i > 0 && (
-                    <div className={cn("border-t mb-5", section.subSectionDivider)} />
-                  )}
-                  <p className={cn("text-xs font-semibold uppercase tracking-widest mb-3", section.subSectionLabelColor)}>
-                    {sub.label}
-                  </p>
-                  <TileGrid
-                    items={sub.items}
-                    activeTile={section.activeTile}
-                    hoverTile={section.hoverTile}
-                  />
+                  <div className="flex items-center gap-4 mb-4">
+                    <p className={cn("text-[10px] font-bold uppercase tracking-[0.2em] whitespace-nowrap", section.subSectionLabelColor)}>
+                      {sub.label}
+                    </p>
+                    <div className={cn("h-[1px] w-full", section.subSectionDivider)} />
+                  </div>
+                  <TileGrid items={sub.items} activeTile={section.activeTile} hoverTile={section.hoverTile} />
                 </div>
               ))}
             </div>
@@ -281,24 +232,25 @@ function SectionAccordion({ section }: { section: Section }) {
 
 export default function Accounts() {
   return (
-    <div className="w-full overflow-x-hidden bg-slate-50 font-sans">
-      <div className="px-6 py-8">
+    <div className="w-full min-h-screen bg-[#F8FAFC] dark:bg-[#0d1117] font-sans selection:bg-blue-100 dark:selection:bg-blue-900/50 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-8 py-12">
 
         {/* Header */}
-        <div className="mb-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-1">
-              Bizcare ERP
-            </p>
-            <h1 className="text-3xl font-bold text-[#004687] tracking-tight">Accounts</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Manage your finances, vouchers, GST returns and reports
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="h-1 w-8 bg-blue-600 dark:bg-blue-500 rounded-full" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-blue-600/60 dark:text-blue-400/70">
+              Bizcare Platform
             </p>
           </div>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Accounts</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
+            Manage your finances, vouchers, GST returns and reports
+          </p>
         </div>
 
         {/* Accordion Sections */}
-        <div className="space-y-3">
+        <div className="grid gap-5">
           {sections.map((section) => (
             <SectionAccordion key={section.id} section={section} />
           ))}

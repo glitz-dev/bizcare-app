@@ -4,6 +4,7 @@ import procurementReducer from './features/inventory/procurement/procurementSlic
 import purchaseOrderReducer from './features/inventory/procurement/purchaseOrderSlice';
 import purchaseReducer from './features/inventory/procurement/purchaseSlice';
 import purchaseReturnReducer from './features/inventory/procurement/purchaseReturnSlice';
+import ServiceBillReducer from './features/inventory/procurement/serviceBillSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     purchaseOrder: purchaseOrderReducer,
     purchase: purchaseReducer,
     purchaseReturn: purchaseReturnReducer,
+    serviceBill: ServiceBillReducer,
 
   },
 });
