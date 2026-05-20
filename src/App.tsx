@@ -13,6 +13,7 @@ import Purchase from './pages/procurement/Purchase'
 import PurchaseReturn from './pages/procurement/PurchaseReturn'
 import ServiceBill from './pages/procurement/ServiceBill'
 import SalesQuotation from './pages/sales/SalesQuotation'
+import SalesOrder from './pages/sales/SalesOrder'
 
 const App = () => {
   return (
@@ -34,6 +35,7 @@ const App = () => {
           <Route path="/Inventory/purchase-return" element={<PurchaseReturn />} />
           <Route path="/Inventory/service-bill" element={<ServiceBill />} />
           <Route path="/inventory/salesquotationdetail" element={<SalesQuotation />} />
+          <Route path="/inventory/sales-order" element={<SalesOrder />} />
         </Route>
         
         {/* 404 Route */}
