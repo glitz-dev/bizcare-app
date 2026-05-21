@@ -1,76 +1,219 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, Dispatch, SetStateAction } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "@/store";
+import {
+  fetchQuotationDocuments,
+  fetchAllInvoiceTaxTypes,
+  fetchAllCustomers,
+  fetchItemDetails,
+  fetchBatchDetails,
+  saveSalesQuotation,
+  clearSaveState,
+  type ItemDetail,
+  type BatchDetail,
+  type SalesQuotationDetailItem,
+} from "../store/features/inventory/sales/salesQuotationSlice";
 import {
   FileText,
-  Hash,
   Calendar,
-  Clock,
-  Tag,
-  User,
-  BookOpen,
-  Barcode,
-  Package,
-  ShoppingCart,
-  DollarSign,
-  Percent,
   ChevronDown,
   Plus,
   Trash2,
   Save,
   RotateCcw,
-  Sparkles,
-  ArrowRight,
-  CreditCard,
-  Truck,
-  MessageSquare,
   X,
+  ArrowLeft,
   CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+
+// ─── Toast ─────────────────────────────────────────────────────────────────────
+
+type ToastType = "success" | "error" | "warning";
+
+interface Toast {
+  id: number;
+  type: ToastType;
+  message: string;
+}
+
+let _toastId = 0;
+
+function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
+      {toasts.map((t) => {
+        const colors: Record<ToastType, string> = {
+          success: "bg-emerald-600 text-white",
+          error: "bg-red-600 text-white",
+          warning: "bg-amber-500 text-white",
+        };
+        const Icon = t.type === "success" ? CheckCircle2 : AlertCircle;
+        return (
+          <div
+            key={t.id}
+            className={`pointer-events-auto flex items-start gap-2.5 px-4 py-3 rounded-xl shadow-lg min-w-[280px] max-w-[360px] text-[13px] font-medium animate-fade-in ${colors[t.type]}`}
+          >
+            <Icon size={16} className="shrink-0 mt-0.5" />
+            <span className="flex-1 leading-snug">{t.message}</span>
+            <button onClick={() => onDismiss(t.id)} className="shrink-0 opacity-70 hover:opacity-100 transition-opacity">
+              <X size={14} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface LineItem {
   id: number;
   barcode: string;
   itemCode: string;
   item: string;
+  itemId: number | null;
+  batchId: number;
   quantity: number | string;
   sRate: number | string;
   netAmount: number;
+  unitId: number | null;
+  unitName: string | null;
+  unitMultiplier: number;
 }
 
-export default function SalesQuotationCreate() {
-  const [document_, setDocument_] = useState("Quotation");
-  const [quotationNo] = useState("QN-14");
-  const [quotationDate] = useState("12-05-2026");
+// ─── Component ─────────────────────────────────────────────────────────────────
+
+export default function SalesQuotationCreate({
+  setShowCreateForm,
+  onSaveSuccess,
+}: {
+  setShowCreateForm: Dispatch<SetStateAction<boolean>>;
+  onSaveSuccess?: () => void;
+}) {
+  const dispatch = useDispatch<AppDispatch>();
+
+  const {
+    quotationDocuments,
+    allInvoiceTaxTypes,
+    customers,
+    itemDetails,
+    saveLoading,
+    saveError,
+    saveSuccess,
+    savedQuotationNo,
+  } = useSelector((state: RootState) => state.salesQuotation);
+
+  // ─── Toast state ────────────────────────────────────────────────────────
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = useCallback((type: ToastType, message: string, duration = 4000) => {
+    const id = ++_toastId;
+    setToasts((prev) => [...prev, { id, type, message }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), duration);
+  }, []);
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // ─── Item / batch dropdown state ────────────────────────────────────────
+  const [itemDropdownOpenId, setItemDropdownOpenId] = useState<number | null>(null);
+  const [itemSearchStr, setItemSearchStr] = useState("");
+  const [rowBatchDetails, setRowBatchDetails] = useState<Record<number, BatchDetail[]>>({});
+  const [selectedInvoiceTaxTypeId, setSelectedInvoiceTaxTypeId] = useState<number | null>(null);
+
+  // ─── Header form state ───────────────────────────────────────────────────
+  const [document_, setDocument_] = useState("");
+  const [documentId, setDocumentId] = useState<number | null>(null);
+  const [taxMasterId, setTaxMasterId] = useState<number>(0);
+  const [isGST, setIsGST] = useState(false);
+  const [currency, setCurrency] = useState("INR");
+  const [currencyId, setCurrencyId] = useState<number>(1);
+  const [quotationNo, setQuotationNo] = useState("");
+  const [quotationDate] = useState(() => {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+  });
+  // ISO date for the payload (YYYY-MM-DD)
+  const quotationDateISO = new Date().toISOString().split("T")[0];
+
+  const [taxTypeOpen, setTaxTypeOpen] = useState(false);
+  const [taxTypeSearch, setTaxTypeSearch] = useState("");
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+
   const [validTill, setValidTill] = useState("");
   const [taxType, setTaxType] = useState("");
   const [customer, setCustomer] = useState("");
+  const [customerId, setCustomerId] = useState<number | null>(null);
   const [refNo, setRefNo] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("Credit");
   const [deliveryTime, setDeliveryTime] = useState("One Working Day After Confirmation");
   const [remarks, setRemarks] = useState("");
   const [discount, setDiscount] = useState(0);
-  const [submitted, setSubmitted] = useState(false);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: 1, barcode: "", itemCode: "", item: "", quantity: "", sRate: "", netAmount: 0 },
+    { id: 1, barcode: "", itemCode: "", item: "", itemId: null, batchId: 0, quantity: "", sRate: "", netAmount: 0, unitId: null, unitName: null, unitMultiplier: 1 },
   ]);
 
+  // ─── Bootstrap ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    dispatch(fetchQuotationDocuments());
+    dispatch(fetchAllCustomers());
+    return () => { dispatch(clearSaveState()); };
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (quotationDocuments.length === 0) return;
+    const doc = quotationDocuments.find((d) => d.SetDefault) ?? quotationDocuments[0];
+    setDocument_(doc.DocumentName);
+    setDocumentId(doc.DocumentID);
+    setQuotationNo(`${doc.Prefix}-${doc.StartingNo}`);
+    setTaxMasterId(doc.TaxMasterID);
+    setIsGST(doc.IsGST);
+    setCurrency(doc.Currency);
+    setCurrencyId(doc.CurrencyID);
+    dispatch(fetchAllInvoiceTaxTypes({ taxMasterId: doc.TaxMasterID }));
+  }, [quotationDocuments]);
+
+  // ─── React to save result ───────────────────────────────────────────────
+  useEffect(() => {
+    if (saveSuccess && savedQuotationNo) {
+      showToast("success", `Sales Quotation ${savedQuotationNo} saved successfully!`);
+      setTimeout(() => {
+        onSaveSuccess?.();      // ← trigger parent re-fetch first
+        setShowCreateForm(false);
+      }, 1500);
+    }
+  }, [saveSuccess, savedQuotationNo]);
+
+  useEffect(() => {
+    if (saveError) {
+      showToast("error", saveError);
+    }
+  }, [saveError]);
+
+  // ─── Line-item helpers ───────────────────────────────────────────────────
   const addRow = () => {
-    setLineItems([
-      ...lineItems,
-      { id: lineItems.length + 1, barcode: "", itemCode: "", item: "", quantity: "", sRate: "", netAmount: 0 },
+    setLineItems((prev) => [
+      ...prev,
+      { id: prev.length + 1, barcode: "", itemCode: "", item: "", itemId: null, batchId: 0, quantity: "", sRate: "", netAmount: 0, unitId: null, unitName: null, unitMultiplier: 1 },
     ]);
   };
 
   const removeRow = (id: number) => {
     if (lineItems.length === 1) return;
-    setLineItems(lineItems.filter((i) => i.id !== id));
+    setLineItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const updateItem = (id: number, field: keyof LineItem, value: string | number) => {
-    setLineItems(
-      lineItems.map((item) => {
+  const updateItem = (id: number, field: keyof LineItem, value: string | number | null) => {
+    setLineItems((prev) =>
+      prev.map((item) => {
         if (item.id !== id) return item;
-        const updated = { ...item, [field]: value };
+        const updated = { ...item, [field]: value } as LineItem;
         const qty = parseFloat(String(updated.quantity)) || 0;
         const rate = parseFloat(String(updated.sRate)) || 0;
         updated.netAmount = qty * rate;
@@ -79,462 +222,611 @@ export default function SalesQuotationCreate() {
     );
   };
 
+  // ─── Totals ──────────────────────────────────────────────────────────────
   const grossAmount = lineItems.reduce((s, i) => s + i.netAmount, 0);
   const totalTax = 0;
   const billwiseDiscount = (grossAmount * discount) / 100;
   const netAmount = grossAmount + totalTax - billwiseDiscount;
+  const totalQty = lineItems.reduce((s, i) => s + (parseFloat(String(i.quantity)) || 0), 0);
 
   const fmt = (n: number) => n.toFixed(3);
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #003a70 0%, #004687 50%, #0066cc 100%)" }}>
-        <div className="text-center text-white p-12">
-          <CheckCircle2 className="w-24 h-24 mx-auto mb-6 text-emerald-400 animate-bounce" />
-          <h2 className="text-4xl font-bold mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Quotation Submitted!</h2>
-          <p className="text-blue-200 text-lg mb-8">QN-14 has been saved successfully.</p>
-          <button
-            onClick={() => setSubmitted(false)}
-            className="px-8 py-3 rounded-xl font-semibold text-white border border-white/30 hover:bg-white/10 transition-all"
-          >
-            Create New Quotation
-          </button>
-        </div>
-      </div>
+  // ─── Submit ──────────────────────────────────────────────────────────────
+  const handleSubmit = () => {
+    // ── Validation: zero quantity or zero net amount ─────────────────────
+    const hasZeroQty = lineItems.some((li) => (parseFloat(String(li.quantity)) || 0) === 0);
+    const hasZeroAmount = lineItems.some((li) => li.netAmount === 0);
+
+    if (hasZeroQty || hasZeroAmount) {
+      showToast("warning", "Net amount and quantity should not be zero.");
+      return;
+    }
+
+    if (!customerId) {
+      showToast("warning", "Please select a customer.");
+      return;
+    }
+
+    if (!documentId) {
+      showToast("warning", "Please select a document.");
+      return;
+    }
+
+    const taxTypeId = selectedInvoiceTaxTypeId ?? allInvoiceTaxTypes[0]?.InvoiceTaxTypeID ?? 0;
+    const taxTypeName = (taxType || allInvoiceTaxTypes[0]?.InvoiceTaxType) ?? "";
+
+    // ── Build LstSalesQuotationDetails ───────────────────────────────────
+    const LstSalesQuotationDetails: SalesQuotationDetailItem[] = lineItems
+      .filter((li) => li.item && li.itemId)
+      .map((li) => ({
+        ItemID: li.itemId!,
+        ItemCode: li.itemCode || null,
+        ItemName: li.item,
+        ItemDescription: null,
+        BatchID: li.batchId,
+        BatchNo: null,
+        Barcode: li.barcode || null,
+        Quantity: String(li.quantity),
+        Rate: String(li.sRate),
+        GrossAmount: fmt(li.netAmount),
+        DiscountPer: "0",
+        DiscountAmt: "0",
+        NetAmount: fmt(li.netAmount),
+        TaxAmount: "0",
+        TotalAmount: fmt(li.netAmount),
+        UnitMultiplier: li.unitMultiplier,
+        UnitID: li.unitId ?? undefined,
+        UnitName: li.unitName ?? null,
+      }));
+
+    dispatch(
+      saveSalesQuotation({
+        payload: {
+          QuotationDateStr: quotationDateISO,
+          QuotationDate: quotationDateISO,
+          QuotationNo: quotationNo,
+          DocumentID: documentId,
+          DocumentName: document_,
+          CustomerID: customerId,
+          CustomerName: customer,
+          InvoiceTaxType: taxTypeName,
+          InvoiceTaxTypeID: taxTypeId,
+          TaxMasterID: taxMasterId,
+          IsGST: isGST,
+          Currency: currency,
+          CurrencyID: currencyId,
+          ExchRate: 1,
+          GrossAmount: fmt(grossAmount),
+          TotalTax: fmt(totalTax),
+          BillwiseDiscountPer: discount,
+          BillwiseDiscountAmt: fmt(billwiseDiscount),
+          NetAmount: fmt(netAmount),
+          NetTotal: fmt(netAmount),
+          TotalQuantity: fmt(totalQty),
+          TaxPercHead: "",
+          TaxAmountHead: "",
+          PreNetAmount: fmt(grossAmount),
+          ReferenceNo: refNo || null,
+          Validity: validTill || null,
+          PaymentTerms: paymentTerms || null,
+          DeliveryTime: deliveryTime || null,
+          Remarks: remarks || null,
+          LstSalesQuotationDetails,
+        },
+      })
     );
-  }
+  };
+
+  // ─── Clear form ──────────────────────────────────────────────────────────
+  const handleClear = () => {
+    setCustomer(""); setCustomerId(null);
+    setRefNo(""); setValidTill(""); setTaxType(""); setSelectedInvoiceTaxTypeId(null);
+    setDiscount(0); setRemarks(""); setPaymentTerms("Credit");
+    setDeliveryTime("One Working Day After Confirmation");
+    setLineItems([{ id: 1, barcode: "", itemCode: "", item: "", itemId: null, batchId: 0, quantity: "", sRate: "", netAmount: 0, unitId: null, unitName: null, unitMultiplier: 1 }]);
+    dispatch(clearSaveState());
+  };
+
+  // ─── Style constants ─────────────────────────────────────────────────────
+  const fieldInputCls = "w-full h-9 px-3 text-[13px] text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 placeholder:text-slate-300 transition-all";
+  const fieldInputReadOnlyCls = "w-full h-9 px-3 text-[13px] text-slate-400 bg-slate-50 border border-slate-200 rounded-lg cursor-not-allowed";
+  const selectCls = "w-full h-9 px-3 pr-8 text-[13px] text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 appearance-none transition-all";
+  const labelCls = "block text-[11px] font-medium text-slate-500 uppercase tracking-wide mb-1.5";
+  const sectionCls = "border border-slate-200 rounded-xl bg-white shadow-sm h-full";
+  const sectionHeaderCls = "px-5 py-3.5 bg-white border-b border-slate-100 flex items-center gap-2";
+  const sectionBodyCls = "px-5 pt-5 pb-5";
 
   return (
-    <div
-      className="min-h-screen font-sans"
-      style={{
-        background: "linear-gradient(135deg, #002d57 0%, #003d78 40%, #004687 70%, #005ba3 100%)",
-        fontFamily: "'DM Sans', sans-serif",
-      }}
-    >
-      {/* Google Fonts */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@600;700&display=swap');
-        .glass { background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.12); }
-        .glass-light { background: rgba(255,255,255,0.10); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); }
-        .field-input { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: white; transition: all 0.2s; }
-        .field-input:focus { outline: none; background: rgba(255,255,255,0.13); border-color: rgba(100,180,255,0.5); box-shadow: 0 0 0 3px rgba(100,180,255,0.12); }
-        .field-input::placeholder { color: rgba(255,255,255,0.35); }
-        .field-input option { background: #004687; color: white; }
-        .table-row-hover:hover { background: rgba(255,255,255,0.06); }
-        .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%); }
-      `}</style>
+    <div className="min-h-screen bg-slate-50">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      {/* Top Header Bar */}
-      <div className="sticky top-0 z-50" style={{ background: "rgba(0,30,60,0.85)", backdropFilter: "blur(24px)", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0066cc, #004687)" }}>
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-white font-bold text-lg tracking-wide" style={{ fontFamily: "'Playfair Display', serif" }}>Sales Quotation</h1>
-              <p className="text-blue-300 text-xs">Create &amp; Manage Quotations</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="glass px-4 py-2 rounded-xl flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-yellow-400" />
-              <span className="text-white text-sm font-medium">{quotationNo}</span>
-            </div>
-            <div className="glass px-4 py-2 rounded-xl flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-300" />
-              <span className="text-white text-sm">{quotationDate}</span>
-            </div>
+      {/* ── Page Header ── */}
+      <div className="bg-[#004687] text-white flex items-center justify-between px-6 py-3">
+        <div className="flex items-center gap-2.5">
+          <FileText size={16} />
+          <div>
+            <p className="text-[11px] font-medium opacity-80 uppercase tracking-wider">Sales</p>
+            <h1 className="text-[15px] font-semibold leading-tight">Create Sales Quotation</h1>
           </div>
         </div>
+        <button
+          onClick={() => setShowCreateForm(false)}
+          className="flex items-center gap-1.5 text-white/70 hover:text-white text-[11px] font-semibold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+        >
+          <ArrowLeft size={13} color="#fff" />
+          Back to List
+        </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      {/* ── Body ── */}
+      <div className="p-6 max-w-[1400px] mx-auto space-y-4">
 
-        {/* Section: General Info */}
-        <div className="glass rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0099ff44, #004687aa)" }}>
-              <FileText className="w-4 h-4 text-blue-300" />
-            </div>
-            <h2 className="text-white font-semibold text-base tracking-wide uppercase" style={{ letterSpacing: "0.08em" }}>General Information</h2>
-            <div className="flex-1 h-px" style={{ background: "linear-gradient(to right, rgba(255,255,255,0.15), transparent)" }} />
+        {/* ── GENERAL INFORMATION ── */}
+        <div className={sectionCls}>
+          <div className={sectionHeaderCls}>
+            <span className="text-[13px] font-semibold text-[#004687] tracking-wide uppercase">General Information</span>
           </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {/* Document */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                <BookOpen className="w-3 h-3" /> Document
-              </label>
-              <div className="relative">
-                <select
-                  value={document_}
-                  onChange={(e) => setDocument_(e.target.value)}
-                  className="field-input w-full px-3 py-2.5 rounded-xl text-sm appearance-none pr-8"
-                >
-                  <option value="Quotation">Quotation</option>
-                  <option value="Proforma">Proforma</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300 pointer-events-none" />
+          <div className={sectionBodyCls}>
+            {/* Row 1 */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+              <div className="md:col-span-2">
+                <label className={labelCls}>Document</label>
+                <div className="relative">
+                  <select
+                    value={document_}
+                    onChange={(e) => {
+                      const doc = quotationDocuments.find((d) => d.DocumentName === e.target.value);
+                      if (doc) {
+                        setDocument_(doc.DocumentName);
+                        setDocumentId(doc.DocumentID);
+                        setQuotationNo(`${doc.Prefix}-${doc.StartingNo}`);
+                        setTaxMasterId(doc.TaxMasterID);
+                        setIsGST(doc.IsGST);
+                        setCurrency(doc.Currency);
+                        setCurrencyId(doc.CurrencyID);
+                        dispatch(fetchAllInvoiceTaxTypes({ taxMasterId: doc.TaxMasterID }));
+                      }
+                    }}
+                    className={selectCls}
+                  >
+                    {quotationDocuments.map((doc) => (
+                      <option key={doc.DocumentID} value={doc.DocumentName}>
+                        {doc.DocumentName}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
               </div>
-            </div>
-
-            {/* Quotation No */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                <Hash className="w-3 h-3" /> Quotation No.
-              </label>
-              <input
-                value={quotationNo}
-                readOnly
-                className="field-input w-full px-3 py-2.5 rounded-xl text-sm opacity-70 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Quotation Date */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                <Calendar className="w-3 h-3" /> Quotation Date
-              </label>
-              <input
-                value={quotationDate}
-                readOnly
-                className="field-input w-full px-3 py-2.5 rounded-xl text-sm opacity-70 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Valid Till */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                <Clock className="w-3 h-3" /> Valid Till
-              </label>
-              <input
-                type="date"
-                value={validTill}
-                onChange={(e) => setValidTill(e.target.value)}
-                className="field-input w-full px-3 py-2.5 rounded-xl text-sm"
-              />
-            </div>
-
-            {/* Tax Type */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                <Tag className="w-3 h-3" /> Tax Type
-              </label>
-              <div className="relative">
-                <select
-                  value={taxType}
-                  onChange={(e) => setTaxType(e.target.value)}
-                  className="field-input w-full px-3 py-2.5 rounded-xl text-sm appearance-none pr-8"
-                >
-                  <option value="">Select Tax Type</option>
-                  <option value="GST">GST</option>
-                  <option value="VAT">VAT</option>
-                  <option value="None">None</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300 pointer-events-none" />
+              <div>
+                <label className={labelCls}>Quotation No.</label>
+                <input value={quotationNo} readOnly className={fieldInputReadOnlyCls} />
               </div>
-            </div>
-          </div>
-
-          {/* Customer & Ref Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                <User className="w-3 h-3" /> Customer
-              </label>
-              <div className="relative">
+              <div>
+                <label className={labelCls}>Quotation Date</label>
+                <input value={quotationDate} readOnly className={fieldInputReadOnlyCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Valid Till</label>
                 <input
-                  value={customer}
-                  onChange={(e) => setCustomer(e.target.value)}
-                  placeholder="Select or type customer name..."
-                  className="field-input w-full px-3 py-2.5 rounded-xl text-sm pr-8"
+                  type="date"
+                  value={validTill}
+                  onChange={(e) => setValidTill(e.target.value)}
+                  className={fieldInputCls}
                 />
-                {customer && (
-                  <button onClick={() => setCustomer("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-300 hover:text-white">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                <BookOpen className="w-3 h-3" /> Reference No.
-              </label>
-              <input
-                value={refNo}
-                onChange={(e) => setRefNo(e.target.value)}
-                placeholder="Enter reference number..."
-                className="field-input w-full px-3 py-2.5 rounded-xl text-sm"
-              />
+            {/* Row 2 */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {/* Tax Type */}
+              <div>
+                <label className={labelCls}>Tax Type</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setTaxTypeOpen((o) => !o)}
+                    className={selectCls + " flex items-center justify-between text-left"}
+                  >
+                    <span className={taxType ? "text-slate-700" : "text-slate-300"}>
+                      {taxType || "Select Tax Type"}
+                    </span>
+                    <ChevronDown size={13} className="text-slate-400 shrink-0" />
+                  </button>
+                  {taxTypeOpen && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg">
+                      <div className="p-2 border-b border-slate-100">
+                        <input
+                          autoFocus
+                          value={taxTypeSearch}
+                          onChange={(e) => setTaxTypeSearch(e.target.value)}
+                          placeholder="Search..."
+                          className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                        />
+                      </div>
+                      <ul className="max-h-48 overflow-y-auto py-1">
+                        {allInvoiceTaxTypes
+                          .filter((t) => t.InvoiceTaxType.toLowerCase().includes(taxTypeSearch.toLowerCase()))
+                          .map((t) => (
+                            <li
+                              key={t.InvoiceTaxTypeID}
+                              onClick={() => {
+                                setTaxType(t.InvoiceTaxType);
+                                setSelectedInvoiceTaxTypeId(t.InvoiceTaxTypeID);
+                                setTaxTypeOpen(false);
+                                setTaxTypeSearch("");
+                              }}
+                              className="px-3 py-1.5 text-[13px] text-slate-700 hover:bg-sky-50 cursor-pointer"
+                            >
+                              {t.InvoiceTaxType}
+                            </li>
+                          ))}
+                        {allInvoiceTaxTypes.filter((t) =>
+                          t.InvoiceTaxType.toLowerCase().includes(taxTypeSearch.toLowerCase())
+                        ).length === 0 && (
+                            <li className="px-3 py-2 text-[12px] text-slate-400">No results</li>
+                          )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Customer */}
+              <div className="md:col-span-2">
+                <label className={labelCls}>Customer</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setCustomerOpen((o) => !o)}
+                    className={selectCls + " flex items-center justify-between text-left"}
+                  >
+                    <span className={customer ? "text-slate-700" : "text-slate-300"}>
+                      {customer || "Select customer..."}
+                    </span>
+                    <ChevronDown size={13} className="text-slate-400 shrink-0" />
+                  </button>
+                  {customer && (
+                    <button
+                      onClick={() => { setCustomer(""); setCustomerId(null); }}
+                      className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                  {customerOpen && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg">
+                      <div className="p-2 border-b border-slate-100">
+                        <input
+                          autoFocus
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                          placeholder="Search..."
+                          className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                        />
+                      </div>
+                      <ul className="max-h-48 overflow-y-auto py-1">
+                        {customers
+                          .filter((c) => c.CustomerName.toLowerCase().includes(customerSearch.toLowerCase()))
+                          .map((c) => (
+                            <li
+                              key={c.CustomerID}
+                              onClick={() => {
+                                setCustomer(c.CustomerName);
+                                setCustomerId(c.CustomerID);
+                                setCustomerOpen(false);
+                                setCustomerSearch("");
+                              }}
+                              className="px-3 py-1.5 text-[13px] text-slate-700 hover:bg-sky-50 cursor-pointer"
+                            >
+                              {c.CustomerName}
+                            </li>
+                          ))}
+                        {customers.filter((c) =>
+                          c.CustomerName.toLowerCase().includes(customerSearch.toLowerCase())
+                        ).length === 0 && (
+                            <li className="px-3 py-2 text-[12px] text-slate-400">No results</li>
+                          )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Reference No */}
+              <div className="md:col-span-2">
+                <label className={labelCls}>Reference No.</label>
+                <input
+                  value={refNo}
+                  onChange={(e) => setRefNo(e.target.value)}
+                  placeholder="Enter reference number..."
+                  className={fieldInputCls}
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Section: Line Items */}
-        <div className="glass rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #00cc8844, #004687aa)" }}>
-                <ShoppingCart className="w-4 h-4 text-emerald-300" />
-              </div>
-              <h2 className="text-white font-semibold text-base tracking-wide uppercase" style={{ letterSpacing: "0.08em" }}>Line Items</h2>
-              <span className="glass px-2.5 py-0.5 rounded-full text-blue-200 text-xs">{lineItems.length} items</span>
-            </div>
+        {/* ── LINE ITEMS ── */}
+        <div className={sectionCls}>
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-white">
+            <span className="text-[13px] font-semibold text-[#004687] tracking-wide uppercase">Line Items</span>
             <button
               onClick={addRow}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:scale-105 active:scale-95"
-              style={{ background: "linear-gradient(135deg, #0066cc, #004687)" }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium bg-[#004687] text-white hover:bg-[#003a73] rounded-lg transition-all"
             >
-              <Plus className="w-4 h-4" />
+              <Plus size={13} />
               Add Row
             </button>
           </div>
-
-          {/* Table Header */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="shimmer">
-                  <th className="text-left px-4 py-3 text-blue-200 font-medium text-xs uppercase tracking-wider w-12">#</th>
-                  <th className="text-left px-4 py-3 text-blue-200 font-medium text-xs uppercase tracking-wider">
-                    <div className="flex items-center gap-1"><Barcode className="w-3 h-3" /> Barcode</div>
-                  </th>
-                  <th className="text-left px-4 py-3 text-blue-200 font-medium text-xs uppercase tracking-wider">
-                    <div className="flex items-center gap-1"><Hash className="w-3 h-3" /> Item Code</div>
-                  </th>
-                  <th className="text-left px-4 py-3 text-blue-200 font-medium text-xs uppercase tracking-wider">
-                    <div className="flex items-center gap-1"><Package className="w-3 h-3" /> Item</div>
-                  </th>
-                  <th className="text-right px-4 py-3 text-blue-200 font-medium text-xs uppercase tracking-wider">Qty</th>
-                  <th className="text-right px-4 py-3 text-blue-200 font-medium text-xs uppercase tracking-wider">S.Rate</th>
-                  <th className="text-right px-4 py-3 text-blue-200 font-medium text-xs uppercase tracking-wider">Net Amt</th>
-                  <th className="w-10 px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                {lineItems.map((row, idx) => (
-                  <tr key={row.id} className="table-row-hover transition-colors">
-                    <td className="px-4 py-3 text-blue-300 font-mono text-xs">{idx + 1}</td>
-                    <td className="px-4 py-3">
-                      <input
-                        value={row.barcode}
-                        onChange={(e) => updateItem(row.id, "barcode", e.target.value)}
-                        placeholder="Barcode"
-                        className="field-input w-full px-2.5 py-1.5 rounded-lg text-xs"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        value={row.itemCode}
-                        onChange={(e) => updateItem(row.id, "itemCode", e.target.value)}
-                        placeholder="Code"
-                        className="field-input w-full px-2.5 py-1.5 rounded-lg text-xs"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        value={row.item}
-                        onChange={(e) => updateItem(row.id, "item", e.target.value)}
-                        placeholder="Select or search item..."
-                        className="field-input w-full px-2.5 py-1.5 rounded-lg text-xs min-w-[200px]"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={row.quantity}
-                        onChange={(e) => updateItem(row.id, "quantity", e.target.value)}
-                        placeholder="0"
-                        className="field-input w-full px-2.5 py-1.5 rounded-lg text-xs text-right max-w-[80px] ml-auto"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={row.sRate}
-                        onChange={(e) => updateItem(row.id, "sRate", e.target.value)}
-                        placeholder="0.000"
-                        className="field-input w-full px-2.5 py-1.5 rounded-lg text-xs text-right max-w-[100px] ml-auto"
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="text-white font-medium text-xs">{fmt(row.netAmount)}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => removeRow(row.id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
+          <div className="px-5 py-4">
+            <div className="rounded-lg border border-slate-200">
+              <table className="w-full text-[12px] text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#004687] text-white">
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px] w-10">#</th>
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px]">Barcode</th>
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px]">Item Code</th>
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px]">
+                      Item <span className="text-red-300 ml-0.5">*</span>
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px] text-right">
+                      Qty <span className="text-red-300 ml-0.5">*</span>
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px] text-right">
+                      S.Rate <span className="text-red-300 ml-0.5">*</span>
+                    </th>
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px] text-right">Net Amt</th>
+                    <th className="px-3 py-2.5 font-semibold whitespace-nowrap tracking-wide text-[11px] w-10"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {lineItems.map((row, idx) => (
+                    <tr key={row.id} className="border-t border-slate-100 hover:bg-sky-50/30 transition-colors">
+                      <td className="px-3 py-1 text-slate-500 font-medium text-center">{idx + 1}</td>
+                      <td className="px-1 py-1 min-w-[100px]">
+                        <input
+                          value={row.barcode}
+                          onChange={(e) => updateItem(row.id, "barcode", e.target.value)}
+                          placeholder="Barcode"
+                          className="w-full h-7 px-2 border border-slate-200 rounded text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                        />
+                      </td>
+                      <td className="px-1 py-1 min-w-[100px]">
+                        <input
+                          value={row.itemCode}
+                          readOnly
+                          placeholder="Code"
+                          className="w-full h-7 px-2 border border-slate-100 rounded text-[12px] bg-slate-50 text-slate-500 cursor-not-allowed"
+                        />
+                      </td>
+                      {/* Item search */}
+                      <td className="px-1 py-1 min-w-[200px] relative">
+                        <input
+                          value={itemDropdownOpenId === row.id ? itemSearchStr : row.item}
+                          onChange={(e) => {
+                            setItemSearchStr(e.target.value);
+                            dispatch(fetchItemDetails({ searchStr: e.target.value }));
+                          }}
+                          onFocus={() => {
+                            setItemDropdownOpenId(row.id);
+                            setItemSearchStr(row.item);
+                            dispatch(fetchItemDetails({ searchStr: row.item }));
+                          }}
+                          onBlur={() => setTimeout(() => setItemDropdownOpenId(null), 150)}
+                          placeholder="Select or search item..."
+                          className="w-full h-7 px-2 border border-slate-200 rounded text-[12px] focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                        />
+                        {itemDropdownOpenId === row.id && itemDetails.length > 0 && (
+                          <div className="absolute left-1 right-1 top-full mt-0.5 z-50 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                            {itemDetails
+                              .filter(
+                                (it) =>
+                                  it.ItemName.toLowerCase().includes(itemSearchStr.toLowerCase()) ||
+                                  (it.ItemCode ?? "").toLowerCase().includes(itemSearchStr.toLowerCase())
+                              )
+                              .map((it) => (
+                                <div
+                                  key={it.ItemID}
+                                  onMouseDown={async () => {
+                                    const taxTypeId = selectedInvoiceTaxTypeId ?? allInvoiceTaxTypes[0]?.InvoiceTaxTypeID ?? 0;
+                                    updateItem(row.id, "item", it.ItemName);
+                                    updateItem(row.id, "itemCode", it.ItemCode ?? "");
+                                    updateItem(row.id, "itemId", it.ItemID);
+                                    setItemDropdownOpenId(null);
+                                    setItemSearchStr("");
+                                    const result = await dispatch(
+                                      fetchBatchDetails({ invoiceTaxTypeId: taxTypeId, itemCode: it.ItemCode ?? "", itemId: it.ItemID })
+                                    );
+                                    if (fetchBatchDetails.fulfilled.match(result) && result.payload.length > 0) {
+                                      const batch = result.payload[0];
+                                      setRowBatchDetails((prev) => ({ ...prev, [row.id]: result.payload }));
+                                      setLineItems((prev) =>
+                                        prev.map((li) => {
+                                          if (li.id !== row.id) return li;
+                                          const qty = parseFloat(String(li.quantity)) || 0;
+                                          const rate = batch.SalesRate;
+                                          return {
+                                            ...li,
+                                            itemCode: it.ItemCode ?? "",
+                                            item: it.ItemName,
+                                            itemId: it.ItemID,
+                                            batchId: batch.BatchID,
+                                            sRate: rate,
+                                            netAmount: qty * rate,
+                                            unitId: batch.SalesUnitID,
+                                            unitName: batch.SaleUnit,
+                                            unitMultiplier: batch.UnitMultiplier,
+                                          };
+                                        })
+                                      );
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 text-[12px] text-slate-700 hover:bg-sky-50 cursor-pointer flex flex-col"
+                                >
+                                  <span className="font-medium">{it.ItemName}</span>
+                                  {it.ItemCode && <span className="text-[11px] text-slate-400">{it.ItemCode}</span>}
+                                </div>
+                              ))}
+                            {itemDetails.filter(
+                              (it) =>
+                                it.ItemName.toLowerCase().includes(itemSearchStr.toLowerCase()) ||
+                                (it.ItemCode ?? "").toLowerCase().includes(itemSearchStr.toLowerCase())
+                            ).length === 0 && (
+                                <div className="px-3 py-2 text-[12px] text-slate-400">No results</div>
+                              )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-1 py-1 min-w-[80px]">
+                        <input
+                          type="number"
+                          value={row.quantity}
+                          onChange={(e) => updateItem(row.id, "quantity", e.target.value)}
+                          placeholder="0"
+                          className="w-full h-7 px-2 border border-slate-200 rounded text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                        />
+                      </td>
+                      <td className="px-1 py-1 min-w-[100px]">
+                        <input
+                          type="number"
+                          value={row.sRate}
+                          onChange={(e) => updateItem(row.id, "sRate", e.target.value)}
+                          placeholder="0.000"
+                          className="w-full h-7 px-2 border border-slate-200 rounded text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                        />
+                      </td>
+                      <td className="px-1 py-1 min-w-[90px]">
+                        <div className="w-full h-7 px-2 border border-slate-100 rounded text-[12px] text-right bg-slate-50 text-slate-500 flex items-center justify-end tabular-nums">
+                          {fmt(row.netAmount)}
+                        </div>
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <button
+                          onClick={() => removeRow(row.id)}
+                          className="w-6 h-6 rounded flex items-center justify-center text-red-400 hover:bg-red-50 transition-colors mx-auto"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        {/* Bottom Section: Terms + Summary */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* ── TERMS & SUMMARY ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
-          {/* Left: Terms */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="glass rounded-2xl p-5 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="w-4 h-4 text-blue-300" />
-                <h3 className="text-white font-semibold text-sm uppercase tracking-wider">Terms &amp; Notes</h3>
-              </div>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                  <CreditCard className="w-3 h-3" /> Payment Terms
-                </label>
+          {/* Left: Terms & Notes */}
+          <div className={`lg:col-span-2 ${sectionCls}`}>
+            <div className={sectionHeaderCls}>
+              <span className="text-[13px] font-semibold text-[#004687] tracking-wide uppercase">Terms &amp; Notes</span>
+            </div>
+            <div className={sectionBodyCls + " space-y-4"}>
+              <div>
+                <label className={labelCls}>Payment Terms</label>
                 <textarea
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
                   rows={2}
-                  className="field-input w-full px-3 py-2.5 rounded-xl text-sm resize-none"
+                  className="w-full px-3 py-2 text-[13px] text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 resize-none transition-all"
                 />
               </div>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                  <Truck className="w-3 h-3" /> Delivery Time
-                </label>
+              <div>
+                <label className={labelCls}>Delivery Time</label>
                 <textarea
                   value={deliveryTime}
                   onChange={(e) => setDeliveryTime(e.target.value)}
                   rows={2}
-                  className="field-input w-full px-3 py-2.5 rounded-xl text-sm resize-none"
+                  className="w-full px-3 py-2 text-[13px] text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 resize-none transition-all"
                 />
               </div>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-1.5 text-blue-200 text-xs font-medium uppercase tracking-wider">
-                  <MessageSquare className="w-3 h-3" /> Remarks
-                </label>
+              <div>
+                <label className={labelCls}>Remarks</label>
                 <textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder="Enter remarks, if any..."
                   rows={3}
-                  className="field-input w-full px-3 py-2.5 rounded-xl text-sm resize-none"
+                  className="w-full px-3 py-2 text-[13px] text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400 placeholder:text-slate-300 resize-none transition-all"
                 />
               </div>
             </div>
           </div>
 
-          {/* Right: Summary */}
-          <div className="lg:col-span-3">
-            <div className="glass rounded-2xl p-5 h-full flex flex-col justify-between">
-              <div className="flex items-center gap-2 mb-5">
-                <DollarSign className="w-4 h-4 text-emerald-300" />
-                <h3 className="text-white font-semibold text-sm uppercase tracking-wider">Amount Summary</h3>
+          {/* Right: Amount Summary */}
+          <div className={`lg:col-span-3 ${sectionCls}`}>
+            <div className={sectionHeaderCls}>
+              <span className="text-[13px] font-semibold text-[#004687] tracking-wide uppercase">Amount Summary</span>
+            </div>
+            <div className={sectionBodyCls + " space-y-2"}>
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-[13px] text-slate-600">Gross Amount</span>
+                <span className="text-[13px] font-medium text-slate-700 tabular-nums">{fmt(grossAmount)}</span>
               </div>
-
-              <div className="space-y-3 flex-1">
-                {/* Gross */}
-                <div className="flex items-center justify-between py-2.5 px-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
-                  <span className="text-blue-200 text-sm">Gross Amount</span>
-                  <div className="flex items-center gap-3">
-                    <div className="h-px w-8 opacity-30" style={{ background: "rgba(255,255,255,0.5)" }} />
-                    <span className="text-white font-medium tabular-nums text-sm">{fmt(grossAmount)}</span>
-                  </div>
-                </div>
-
-                {/* Tax */}
-                <div className="flex items-center justify-between py-2.5 px-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
-                  <span className="text-blue-200 text-sm">Total Tax</span>
-                  <div className="flex items-center gap-3">
-                    <div className="h-px w-8 opacity-30" style={{ background: "rgba(255,255,255,0.5)" }} />
-                    <span className="text-white font-medium tabular-nums text-sm">{fmt(totalTax)}</span>
-                  </div>
-                </div>
-
-                {/* Discount */}
-                <div className="flex items-center justify-between py-2 px-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-blue-200 text-sm">Billwise Discount</span>
-                    <Percent className="w-3 h-3 text-yellow-400" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={discount}
-                      onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                      className="field-input w-16 px-2 py-1 rounded-lg text-xs text-right"
-                      min={0}
-                      max={100}
-                    />
-                    <span className="text-blue-300 text-xs">%</span>
-                    <div className="h-px w-8 opacity-30" style={{ background: "rgba(255,255,255,0.5)" }} />
-                    <span className="text-white font-medium tabular-nums text-sm">{fmt(billwiseDiscount)}</span>
-                  </div>
-                </div>
-
-                {/* Net Amount */}
-                <div className="flex items-center justify-between py-2.5 px-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
-                  <span className="text-blue-200 text-sm">Net Amount</span>
-                  <div className="flex items-center gap-3">
-                    <div className="h-px w-8 opacity-30" style={{ background: "rgba(255,255,255,0.5)" }} />
-                    <span className="text-white font-medium tabular-nums text-sm">{fmt(netAmount)}</span>
-                  </div>
-                </div>
-
-                {/* Round Off */}
-                <div className="flex items-center justify-between py-2.5 px-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
-                  <span className="text-blue-200 text-sm">Round Off Amount</span>
-                  <div className="flex items-center gap-3">
-                    <div className="h-px w-8 opacity-30" style={{ background: "rgba(255,255,255,0.5)" }} />
-                    <span className="text-white font-medium tabular-nums text-sm">0.000</span>
-                  </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-[13px] text-slate-600">Total Tax</span>
+                <span className="text-[13px] font-medium text-slate-700 tabular-nums">{fmt(totalTax)}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-[13px] text-slate-600">Billwise Discount</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                    className="w-14 h-7 px-2 text-[12px] text-right border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-sky-400 bg-white"
+                    min={0}
+                    max={100}
+                  />
+                  <span className="text-[12px] text-slate-400">%</span>
+                  <span className="text-[13px] font-medium text-slate-700 tabular-nums w-20 text-right">{fmt(billwiseDiscount)}</span>
                 </div>
               </div>
-
-              {/* NET AMOUNT Total */}
-              <div
-                className="mt-4 rounded-2xl p-5 flex items-center justify-between"
-                style={{ background: "linear-gradient(135deg, rgba(0,102,204,0.4) 0%, rgba(0,70,135,0.6) 100%)", border: "1px solid rgba(100,180,255,0.25)" }}
-              >
-                <div>
-                  <p className="text-blue-200 text-xs uppercase tracking-widest mb-0.5">Net Amount</p>
-                  <p className="text-white text-3xl font-bold tabular-nums" style={{ fontFamily: "'Playfair Display', serif" }}>
-                    {fmt(netAmount)}
-                  </p>
-                </div>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0099ff, #004687)" }}>
-                  <DollarSign className="w-7 h-7 text-white" />
-                </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-[13px] text-slate-600">Net Amount</span>
+                <span className="text-[13px] font-medium text-slate-700 tabular-nums">{fmt(netAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="text-[13px] text-slate-600">Round Off Amount</span>
+                <span className="text-[13px] font-medium text-slate-700 tabular-nums">0.000</span>
+              </div>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-[#004687] mt-3">
+                <span className="text-[13px] font-semibold text-white uppercase tracking-wide">Net Amount</span>
+                <span className="text-[18px] font-bold text-white tabular-nums">{fmt(netAmount)}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pb-8">
+        {/* ── Action Buttons ── */}
+        <div className="flex justify-end gap-3 pt-2 pb-8">
           <button
-            onClick={() => {
-              setCustomer(""); setRefNo(""); setValidTill(""); setTaxType(""); setDiscount(0); setRemarks("");
-              setLineItems([{ id: 1, barcode: "", itemCode: "", item: "", quantity: "", sRate: "", netAmount: 0 }]);
-            }}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-blue-200 border transition-all hover:bg-white/10 hover:text-white"
-            style={{ border: "1px solid rgba(255,255,255,0.2)" }}
+            onClick={handleClear}
+            disabled={saveLoading}
+            className="flex items-center gap-2 px-5 py-2 text-[13px] font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-lg transition-all disabled:opacity-50"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw size={13} />
             Clear
           </button>
           <button
-            onClick={() => setSubmitted(true)}
-            className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105 active:scale-95 shadow-lg"
-            style={{ background: "linear-gradient(135deg, #0099ff, #004687)", boxShadow: "0 4px 20px rgba(0,102,204,0.4)" }}
+            onClick={handleSubmit}
+            disabled={saveLoading}
+            className="flex items-center gap-2 px-6 py-2 text-[13px] font-semibold bg-[#004687] text-white hover:bg-[#003a73] rounded-lg shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
-            <Save className="w-4 h-4" />
-            Submit Quotation
-            <ArrowRight className="w-4 h-4" />
+            {saveLoading ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Save size={13} />
+                Submit
+              </>
+            )}
           </button>
         </div>
 

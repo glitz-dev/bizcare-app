@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { type Column } from "react-data-grid";
 import {
   DataTable,
@@ -11,38 +12,29 @@ import { PageFilters } from "../../common/PageFilters";
 import { PageHeader } from "../../common/PageHeader";
 import { User, ClipboardList } from "lucide-react";
 import SalesQuotationCreate from "@/components/SalesQuotationCreate";
+import { AppDispatch, RootState } from "@/store";
+import {
+  fetchSalesQuotationList,
+  clearQuotationList,
+  type SalesQuotationListItem,
+} from "../../store/features/inventory/sales/salesQuotationSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface SalesQuotationRow {
+
+// Table row is derived directly from the slice's SalesQuotationListItem
+type SalesQuotationRow = {
   id: number;
   quotationNo: string;
   quotationDate: string;
   customer: string;
   referenceNo: string;
   amount: number;
-}
+};
 
-// Mirrors SelectedPO pattern from PurchaseOrder — swap with your actual slice type
 type SelectedSQ = SalesQuotationRow;
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
-const MOCK_ROWS: SalesQuotationRow[] = [
-  { id: 1,  quotationNo: "QN-1",  quotationDate: "11/14/2024", customer: "ABDUL SHUKOOR",  referenceNo: "101",      amount: 52500   },
-  { id: 2,  quotationNo: "QN-2",  quotationDate: "11/14/2024", customer: "ABHILASHA P S",  referenceNo: "12",       amount: 112000  },
-  { id: 3,  quotationNo: "QN-3",  quotationDate: "11/14/2024", customer: "ABDUL RAZIQ",    referenceNo: "122",      amount: 123200  },
-  { id: 4,  quotationNo: "QN-4",  quotationDate: "11/14/2024", customer: "ABHILASHA P S",  referenceNo: "",         amount: 8850    },
-  { id: 5,  quotationNo: "QN-5",  quotationDate: "11/14/2024", customer: "ABDULLA K",      referenceNo: "",         amount: 2950    },
-  { id: 6,  quotationNo: "QN-6",  quotationDate: "11/14/2024", customer: "ABHILASHA P S",  referenceNo: "43",       amount: 735     },
-  { id: 7,  quotationNo: "QN-7",  quotationDate: "11/14/2024", customer: "ABHILASHA P S",  referenceNo: "976",      amount: 2576    },
-  { id: 8,  quotationNo: "QN-8",  quotationDate: "11/15/2024", customer: "ABDUL SHUKOOR",  referenceNo: "",         amount: 4200    },
-  { id: 9,  quotationNo: "QN-9",  quotationDate: "12/27/2024", customer: "ABDUL SALAM",    referenceNo: "82",       amount: 210     },
-  { id: 10, quotationNo: "QN-10", quotationDate: "01/28/2025", customer: "ABDULLA K",      referenceNo: "",         amount: 17248   },
-  { id: 11, quotationNo: "QN-11", quotationDate: "04/20/2026", customer: "CUSTOMER567",    referenceNo: "",         amount: 1770    },
-  { id: 12, quotationNo: "QN-12", quotationDate: "04/20/2026", customer: "CUSTOMER567",    referenceNo: "",         amount: 5310    },
-  { id: 13, quotationNo: "QN-13", quotationDate: "05/05/2026", customer: "CUSTOMER567",    referenceNo: "Test Ref", amount: 2642.64 },
-];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function getTwoYearsAgo(): string {
   const d = new Date();
   d.setFullYear(d.getFullYear() - 2);
@@ -53,54 +45,75 @@ function getToday(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-const SalesQuotation = () => {
-  // ─── View State ─────────────────────────────────────────────────────────
-  const [showCreateForm, setShowCreateForm] = useState(false);
+/** Map API item → flat row the table understands */
+function toRow(item: SalesQuotationListItem): SalesQuotationRow {
+  return {
+    id: item.SalesQuotationID,
+    quotationNo: item.QuotationNo,
+    quotationDate: item.QuotationDate,
+    customer: item.Customer,
+    referenceNo: item.ReferenceNo ?? "",
+    amount: item.NetAmount,
+  };
+}
 
-  // ─── Filter State ───────────────────────────────────────────────────────
-  const [fromDate, setFromDate] = useState(getTwoYearsAgo());
-  const [toDate, setToDate]     = useState(getToday());
-  const [selectedItem, setSelectedItem] = useState("");
-  const [rows, setRows]         = useState<SalesQuotationRow[]>(MOCK_ROWS);
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+const SalesQuotation = () => {
+  const dispatch = useDispatch<AppDispatch>();
+
+  // ─── Redux state ────────────────────────────────────────────────────────
+  const {
+    quotationList,
+    quotationListLoading,
+    quotationListError,
+  } = useSelector((state: RootState) => state.salesQuotation);
+
+  // ─── View state ─────────────────────────────────────────────────────────
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingSQ, setEditingSQ] = useState<SelectedSQ | null>(null);
 
-  // ─── Redux (wire up when slice is ready) ────────────────────────────────
-  // const dispatch = useDispatch<AppDispatch>();
-  // const { selectedSQ, selectedSQLoading, salesQuotations, loading, error, items, itemsLoading } =
-  //   useSelector((state: RootState) => state.salesQuotation);
-  //
-  // Temporary stubs so the component compiles without the slice:
-  const selectedSQ        = null as SelectedSQ | null;
-  const selectedSQLoading = false;
-  const loading           = false;
-  const error             = null as string | null;
-  const items             = [] as { id: string; name: string }[];
-  const itemsLoading      = false;
+  // ─── Filter state ───────────────────────────────────────────────────────
+  const [fromDate, setFromDate] = useState(getToday());
+  const [toDate, setToDate] = useState(getToday());
+  const [selectedItem, setSelectedItem] = useState("");
 
-  // Open edit form when a quotation is fetched from the store
+  // ─── Derived rows ───────────────────────────────────────────────────────
+  // Convert the raw API list to the shape our columns expect.
+  const rows: SalesQuotationRow[] = useMemo(
+    () => quotationList.map(toRow),
+    [quotationList]
+  );
+
+  // ─── Fetch on mount & whenever the date range changes via Search ─────────
+  // Initial load uses the default date range already in state.
   useEffect(() => {
-    if (selectedSQ) {
-      setEditingSQ(selectedSQ);
-      setShowCreateForm(true);
-    }
-  }, [selectedSQ]);
+    dispatch(fetchSalesQuotationList({ fromDate, toDate }));
+
+    // Clean up the list when this page unmounts so stale data
+    // doesn't flash the next time the page is opened.
+    return () => {
+      dispatch(clearQuotationList());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
 
   // ─── Handlers ───────────────────────────────────────────────────────────
+
+  /** Called by the Search button in PageFilters */
+  const handleSearch = useCallback(() => {
+    dispatch(fetchSalesQuotationList({ fromDate, toDate }));
+  }, [dispatch, fromDate, toDate]);
+
   const handleEdit = useCallback((row: any) => {
     if (!row.id) {
       console.warn("No id on row", row);
       return;
     }
-    // dispatch(fetchSelectedSQ({ id: row.id }));
-    // Temporary: open form directly with the row data
+    // TODO: dispatch(fetchSelectedSQ({ id: row.id })) when that thunk exists
     setEditingSQ(row as SelectedSQ);
     setShowCreateForm(true);
   }, []);
-
-  const handleSearch = useCallback(() => {
-    // dispatch(fetchSalesQuotations({ fromDate, toDate, itemid: selectedItem || undefined }));
-  }, [fromDate, toDate, selectedItem]);
 
   const handleCreateNew = () => {
     setEditingSQ(null);
@@ -110,20 +123,13 @@ const SalesQuotation = () => {
   const handleFormClose = () => {
     setShowCreateForm(false);
     setEditingSQ(null);
-    // dispatch(clearSelectedSQ());
   };
 
-  const handleFormSubmit = (data: any) => {
-    setRows((prev) => {
-      if (data.id && editingSQ) {
-        return prev.map((r) => (r.id === data.id ? data : r));
-      }
-      return [data, ...prev];
-    });
+  const handleFormSubmit = (_data: any) => {
     setEditingSQ(null);
-    // dispatch(clearSelectedSQ());
     setShowCreateForm(false);
-    handleSearch();
+    // Re-fetch so the list reflects the new / updated quotation
+    dispatch(fetchSalesQuotationList({ fromDate, toDate }));
   };
 
   // ─── Columns ────────────────────────────────────────────────────────────
@@ -132,12 +138,12 @@ const SalesQuotation = () => {
       {
         key: "actions",
         name: "Actions",
-        width: 90,
+        width: 110,
         renderCell: ({ row }) => (
           <ActionsCell
             row={row}
             onEdit={handleEdit}
-            onDelete={() => {}}
+            onDelete={() => { }}
           />
         ),
       },
@@ -196,7 +202,7 @@ const SalesQuotation = () => {
       {
         key: "referenceNo",
         name: "Reference No",
-        width: 200,
+        width: 220,
         renderHeaderCell: (props: any) => (
           <FilterHeader
             column={props.column}
@@ -233,30 +239,19 @@ const SalesQuotation = () => {
 
   // ─── Conditional Renders ────────────────────────────────────────────────
 
-  // 1. Loading spinner while fetching a specific quotation for editing
-  if (selectedSQLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-7 h-7 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-          <p className="text-[13px] text-slate-400 font-medium">Loading sales quotation…</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Create / Edit form
+  // 1. Create / Edit form
   if (showCreateForm) {
     return (
       <SalesQuotationCreate
-        onClose={handleFormClose}
-        onSubmit={handleFormSubmit}
-        editData={editingSQ}
+        setShowCreateForm={setShowCreateForm}
+        onSaveSuccess={() =>
+          dispatch(fetchSalesQuotationList({ fromDate, toDate }))
+        }
       />
     );
   }
 
-  // 3. List view
+  // 2. List view
   return (
     <>
       <PageHeader
@@ -275,9 +270,9 @@ const SalesQuotation = () => {
           setToDate={setToDate}
           selectedItem={selectedItem}
           setSelectedItem={setSelectedItem}
-          items={items}
-          itemsLoading={itemsLoading}
-          loading={loading}
+          items={[]}
+          itemsLoading={false}
+          loading={quotationListLoading}
           onSearch={handleSearch}
         />
 
@@ -285,8 +280,8 @@ const SalesQuotation = () => {
           columns={columns}
           rows={rows}
           rowKey="id"
-          loading={loading}
-          error={error}
+          loading={quotationListLoading}
+          error={quotationListError}
           rowHeight={40}
           headerRowHeight={60}
         />

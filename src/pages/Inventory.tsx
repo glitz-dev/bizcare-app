@@ -60,7 +60,7 @@ const sections: Section[] = [
     subSectionDivider: "border-emerald-100 dark:border-emerald-900",
     items: [
       { label: "Sales Quotation", icon: <CirclePercent size={20} />, href: "/inventory/salesquotationdetail" },
-      { label: "Sales Order",     icon: <Receipt size={20} />, href: "/inventory/salesorderdetail" },
+      { label: "Sales Order",     icon: <Receipt size={20} />, href: "/inventory/sales-order" },
       { label: "Sales Invoice",   icon: <FileText size={20} />, href: "/inventory/salesinvoicedetail" },
       { label: "Sales Return",    icon: <RefreshCw size={20} />, href: "/inventory/salesreturndetail" },
       { label: "Delivery Note",   icon: <Truck size={20} />, href: "/inventory/deliverynotedetail" },
