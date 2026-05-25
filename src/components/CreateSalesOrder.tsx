@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
-import { fetchCustomers, fetchBanks, fetchPaymentTypes, fetchPaymentTerms, fetchPendingSalesQuotations, fetchProductDetails, fetchProductionItemDetail, fetchSalesOrderDocuments, fetchInvoiceTaxTypes, fetchDefaultStore, fetchStoreStartWith, fetchCurrencyList, fetchCustomerCodes } from "../store/features/inventory/sales/salesOrder";
-import type { Bank, PaymentType, PaymentTerm, PendingSalesQuotation, ProductDetail, ProductionItemDetail, SalesOrderDocument, InvoiceTaxType, StoreStartWith, CurrencyStartWith, CustomerCodeItem } from "../store/features/inventory/sales/salesOrder";
+import { fetchCustomers, fetchBanks, fetchPaymentTypes, fetchPaymentTerms, fetchPendingSalesQuotations, fetchProductDetails, fetchProductionItemDetail, fetchSalesOrderDocuments, fetchInvoiceTaxTypes, fetchDefaultStore, fetchStoreStartWith, fetchCurrencyList, fetchCustomerCodes, saveSalesOrder, clearSaveSalesOrder } from "../store/features/inventory/sales/salesOrder";
+import type { Bank, PaymentType, PaymentTerm, PendingSalesQuotation, ProductDetail, ProductionItemDetail, SalesOrderDocument, InvoiceTaxType, StoreStartWith, CurrencyStartWith, CustomerCodeItem, SaveSalesOrderPayload, SalesOrderDetailItem } from "../store/features/inventory/sales/salesOrder";
 import { DataGrid, type Column } from "react-data-grid";
 import "react-data-grid/lib/styles.css";
 import {
@@ -69,6 +69,46 @@ import { cn } from "@/lib/utils";
 const BRAND = "#004687";
 const BRAND_LIGHT = "#e8f0f9";
 const BRAND_MID = "#ccdff2";
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+type ToastType = "success" | "error";
+interface ToastProps { message: string; type: ToastType; onClose: () => void }
+function Toast({ message, type, onClose }: ToastProps) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-2xl shadow-2xl min-w-[280px] max-w-sm"
+      style={{
+        background: type === "success" ? "#f0fdf4" : "#fef2f2",
+        border: `1.5px solid ${type === "success" ? "#bbf7d0" : "#fecaca"}`,
+        fontFamily: "'DM Sans', sans-serif",
+      }}
+    >
+      <div
+        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: type === "success" ? "#dcfce7" : "#fee2e2" }}
+      >
+        {type === "success"
+          ? <Check size={16} strokeWidth={2.5} style={{ color: "#16a34a" }} />
+          : <AlertCircle size={16} strokeWidth={2.5} style={{ color: "#dc2626" }} />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold" style={{ color: type === "success" ? "#15803d" : "#b91c1c" }}>
+          {type === "success" ? "Order Saved" : "Save Failed"}
+        </p>
+        <p className="text-xs mt-0.5 break-words" style={{ color: type === "success" ? "#166534" : "#991b1b" }}>
+          {message}
+        </p>
+      </div>
+      <button onClick={onClose} className="shrink-0 mt-0.5 hover:opacity-60 transition-opacity">
+        <X size={14} style={{ color: type === "success" ? "#16a34a" : "#dc2626" }} />
+      </button>
+    </div>
+  );
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -1327,9 +1367,10 @@ function PartyMasterModal({ onClose }: { onClose: () => void }) {
 // ─── Main component ──────────────────────────────────────────────────────────
 interface CreateSalesOrderProps {
   onBack?: () => void;
+  onSaveSuccess?: (message: string) => void;
 }
 
-export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
+export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesOrderProps) {
   const dispatch = useDispatch<AppDispatch>();
   const customers = useSelector((state: RootState) => state.salesOrder?.customers ?? []);
   const customersLoading = useSelector((state: RootState) => state.salesOrder?.customersLoading ?? false);
@@ -1346,6 +1387,7 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
   const currencyListLoading = useSelector((state: RootState) => state.salesOrder?.currencyListLoading ?? false);
   const customerCodes = useSelector((state: RootState) => state.salesOrder?.customerCodes ?? []);
   const customerCodesLoading = useSelector((state: RootState) => state.salesOrder?.customerCodesLoading ?? false);
+  const saveSalesOrderLoading = useSelector((state: RootState) => state.salesOrder?.saveSalesOrderLoading ?? false);
 
   const [lines, setLines] = useState<LineItem[]>([emptyLine()]);
   const [gstRows, setGstRows] = useState<GstBreakdownRow[]>([emptyGstRow()]);
@@ -1354,6 +1396,24 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
   const [orderNo, setOrderNo] = useState("");
   const [currency, setCurrency] = useState("");
   const [supplyType, setSupplyType] = useState("");
+
+  // ── Tracked form state for payload ──────────────────────────────────────────
+  const [orderDate, setOrderDate] = useState<string>("2026-05-16");
+  const [deliveryWeek, setDeliveryWeek] = useState<string>("");
+  const [custRefDate, setCustRefDate] = useState<string>("");
+  const [documentId, setDocumentId] = useState<number>(0);
+  const [documentName, setDocumentName] = useState<string>("");
+  const [prefix, setPrefix] = useState<string>("");
+  const [startingNo, setStartingNo] = useState<number>(0);
+  const [invoiceTaxType, setInvoiceTaxType] = useState<string>("");
+  const [invoiceTaxTypeId, setInvoiceTaxTypeId] = useState<number>(0);
+  const [taxMasterId, setTaxMasterId] = useState<number>(0);
+  const [isGst, setIsGst] = useState<boolean>(true);
+  const [exRate, setExRate] = useState<number>(1);
+
+  // ── Toast state ─────────────────────────────────────────────────────────────
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
   const [customerOpen, setCustomerOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [partyMasterOpen, setPartyMasterOpen] = useState(false);
@@ -1381,6 +1441,13 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
       if (Array.isArray(docs) && docs.length > 0) {
         const first = docs[0];
         setDocument(first.DocumentName ?? "");
+        setDocumentId(first.DocumentID ?? 0);
+        setDocumentName(first.DocumentName ?? "");
+        setPrefix(first.Prefix ?? "");
+        setStartingNo(first.StartingNo ?? 0);
+        setTaxMasterId(first.TaxMasterID ?? 0);
+        setIsGst(first.IsGST ?? true);
+        setExRate(first.ExchRate ?? 1);
         setOrderNo(first.Prefix != null && first.StartingNo != null ? `${first.Prefix}-${first.StartingNo}` : "");
         setCurrency(first.Currency ?? "");
         setSelectedCurrencyId(first.CurrencyID ?? null);
@@ -1388,6 +1455,8 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
           const types: InvoiceTaxType[] = taxAction?.payload;
           if (Array.isArray(types) && types.length > 0) {
             setSupplyType(types[0].InvoiceTaxType ?? "");
+            setInvoiceTaxType(types[0].InvoiceTaxType ?? "");
+            setInvoiceTaxTypeId(types[0].InvoiceTaxTypeID ?? 0);
           }
         });
       }
@@ -1414,12 +1483,185 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
   const updateLine = (id: number, field: keyof LineItem, value: string) =>
     setLines((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  const formatDateStr = (isoDate: string): string => {
+    // Convert "YYYY-MM-DD" → "DD-MM-YYYY" as the API expects
+    if (!isoDate) return "";
+    const parts = isoDate.split("-");
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return isoDate;
+  };
+
+  const toIso = (dateStr: string): string => {
+    // Convert "YYYY-MM-DD" → full ISO string as the API stores dates
+    if (!dateStr) return new Date().toISOString();
+    return new Date(dateStr).toISOString();
+  };
+
+  // ── Submit handler ───────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    const now = new Date().toISOString();
+    const saleDateIso = toIso(orderDate);
+    const saleDateStr = formatDateStr(orderDate);
+    const deliveryWeekIso = deliveryWeek ? toIso(deliveryWeek) : saleDateIso;
+    const deliveryWeekStr = deliveryWeek ? formatDateStr(deliveryWeek) : saleDateStr;
+    const custRefDateIso = custRefDate ? toIso(custRefDate) : saleDateIso;
+    const custRefDateStr = custRefDate ? formatDateStr(custRefDate) : saleDateStr;
+
+    // Map gstRows → LstSalesOrderDetails
+    const lstSalesOrderDetails: SalesOrderDetailItem[] = gstRows
+      .filter((r) => r.itemId != null)
+      .map((r, idx) => ({
+        SlNo: idx + 1,
+        ItemID: r.itemId!,
+        ItemCode: r.itemCode,
+        ItemName: r.item,
+        SalesUnitID: 0,          // not collected in UI — default
+        SalesUnit: r.unit,
+        Quantity: r.quantity || "0",
+        OrderedQty: 0,
+        SalesRate: parseFloat(r.salesRate) || 0,
+        DiscountPercentage: parseFloat(r.discPct) || 0,
+        DiscountAmount: r.discount || "0.0000",
+        GrossAmount: parseFloat(r.grossAmt) || 0,
+        Amount: r.grossAmt || "0.0000",
+        TaxRate: r.gstPct || "0.0000",
+        CGSTPer: parseFloat(r.cgstPct) || 0,
+        SGSTPer: parseFloat(r.sgstPct) || 0,
+        CGSTAmt: r.cgstAmt || "0.0000",
+        SGSTAmt: r.sgstAmt || "0.0000",
+        IGSTAmt: r.igstAmt || "0.0000",
+        UTGSTAmt: r.utgstAmt || "0.0000",
+        CESSAmt: r.cessAmt || "0.0000",
+        VATAmt: "0.0000",
+        BatchID: 0,
+        Barcode: r.itemCode,
+        RateOn: r.unit,
+        RateBasedOnSqm: false,
+        UnitMultiplier: 1,
+        StockAvailable: true,
+        Label: `undefined # ${orderNo}`,
+      }));
+
+    const totalQty = lstSalesOrderDetails
+      .reduce((sum, item) => sum + parseFloat(item.Quantity), 0)
+      .toFixed(3);
+
+    const body: SaveSalesOrderPayload = {
+      SalesOrderDate: saleDateIso,
+      SalesOrderDateStr: saleDateStr,
+      DeliveryWeek: deliveryWeekIso,
+      DeliveryWeekStr: deliveryWeekStr,
+      CustRefDate: custRefDateIso,
+      CustRefDateStr: custRefDateStr,
+      ReviewDate: saleDateIso,
+      ReviewDateStr: saleDateStr,
+      ReviewedOn: now,
+      TaxPercHead: isGst ? "GST %" : "VAT %",
+      TaxAmountHead: isGst ? "GST Amt" : "VAT Amt",
+      Amendment: false,
+      Approved: false,
+      BankID: selectedBankId ?? 0,
+      BankName: selectedBank?.BankName ?? "",
+      BillwiseDiscountAmt: "0.000",
+      BillwiseDiscountPer: 0,
+      CBM: "0.0000",
+      ChequeDate: null,
+      Currency: selectedCurrency?.Currency ?? currency,
+      CurrencyID: selectedCurrencyId ?? 0,
+      CustomerAddress: selectedCustomer?.CustomerAddress ?? null,
+      CustomerCode: selectedCustomer?.CustomerCode ?? "",
+      CustomerID: selectedCustomerId ?? 0,
+      CustomerName: selectedCustomer?.CustomerName ?? "",
+      DaysToComplete: selectedCustomer?.DaysToComplete ?? null,
+      DocumentID: documentId,
+      DocumentName: documentName,
+      ECGCLimit: selectedCustomer?.ECGCLimit ?? null,
+      ExRate: exRate,
+      FinanceAvailable: selectedCustomer?.FinanceAvailable ?? null,
+      GrossAmount: "0.0000",
+      GrossAmountBase: "0.0000",
+      Intercompany: false,
+      InvoiceTaxType: invoiceTaxType,
+      InvoiceTaxTypeID: invoiceTaxTypeId,
+      IsGST: isGst,
+      IsLocalOrder: false,
+      LstSalesOrderDetails: lstSalesOrderDetails,
+      ManualyChangedDocNo: false,
+      MerchantExpPer: selectedCustomer?.MerchantExpPer ?? 0,
+      NetAmount: "0.0000",
+      NetAmountBase: "0.0000",
+      NetTotal: "0.0000",
+      NetTotalBase: "0.0000",
+      OtherAdditionalAmount: "0.0000",
+      OtherAdditionalAmountBase: "0.0000",
+      OtherDeductionAmount: "0.0000",
+      OtherDeductionAmountBase: "0.0000",
+      PayDaysFromBL: selectedCustomer?.PayDaysFromBL ?? null,
+      PaymentTerm: selectedPaymentTerm?.PaymentTerm ?? "",
+      PaymentTermsID: selectedPaymentTermId ?? 0,
+      PaymentTypeID: selectedPaymentTypeId ?? 0,
+      PaymentTypeName: selectedPaymentType?.PaymentTypeName ?? "",
+      PreNetAmount: "0.0000",
+      PreNetAmountBase: "0.0000",
+      Prefix: prefix,
+      ProbableAdvDate: null,
+      ProdCompletionDate: null,
+      ProjectedArrivalDate: null,
+      ReviewedBy: 1,
+      ReviewedByName: "admin",
+      SalesOrderNo: orderNo,
+      ShipmentDate: null,
+      StartingNo: startingNo,
+      StatusDetails: "Processing",
+      StatusID: 1,
+      StoreID: selectedStoreId ?? defaultStore?.StoreID ?? 0,
+      StoreName: selectedStore?.StoreName ?? defaultStore?.StoreName ?? "",
+      Suffix: null,
+      SupplyType: supplyType,
+      SupplyTypeID: 4,
+      TaxInvoice: true,
+      TaxMasterID: taxMasterId,
+      TotalCESSAmt: 0,
+      TotalCGSTAmt: 0,
+      TotalDiscount: "0.0000",
+      TotalDiscountBase: "0.0000",
+      TotalIGSTAmt: 0,
+      TotalQuantity: totalQty,
+      TotalSGSTAmt: 0,
+      TotalTax: "0.0000",
+      TotalTaxBase: "0.0000",
+      TotalUTGSTAmt: 0,
+      TotalVATAmount: 0,
+    };
+
+    try {
+      const result = await dispatch(saveSalesOrder({ body })).unwrap();
+      dispatch(clearSaveSalesOrder());
+      const msg = result.Message || "Sales order saved successfully.";
+      if (onSaveSuccess) onSaveSuccess(msg);
+      if (onBack) onBack();
+    } catch (err: any) {
+      dispatch(clearSaveSalesOrder());
+      setToast({ message: typeof err === "string" ? err : "Failed to save sales order.", type: "error" });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <link
         href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap"
         rel="stylesheet"
       />
+
+      {/* ── Toast ── */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {/* ── Top Bar ── */}
       <div className="sticky top-0 z-30 shadow-md" style={{ background: BRAND }}>
@@ -1493,7 +1735,7 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
                 </div>
                 <div>
                   <FieldLabel icon={Calendar} label="Order Date" />
-                  <InputField icon={<Calendar size={14} />} placeholder="Order Date" type="date" value="2026-05-16" />
+                  <InputField icon={<Calendar size={14} />} placeholder="Order Date" type="date" value={orderDate} onChange={setOrderDate} />
                 </div>
                 <div>
                   <FieldLabel icon={User} label="Customer" />
@@ -1757,7 +1999,7 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
                 </div>
                 <div>
                   <FieldLabel icon={Calendar} label="Customer Order Date" />
-                  <InputField icon={<Calendar size={14} />} placeholder="Order Date" type="date" />
+                  <InputField icon={<Calendar size={14} />} placeholder="Order Date" type="date" value={custRefDate} onChange={setCustRefDate} />
                 </div>
                 <div>
                   <FieldLabel icon={Tag} label="Customer Code" />
@@ -2172,11 +2414,14 @@ export default function CreateSalesOrder({ onBack }: CreateSalesOrderProps) {
             Clear
           </button>
           <button
-            className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90"
+            onClick={handleSubmit}
+            disabled={saveSalesOrderLoading}
+            className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ background: BRAND }}
           >
-            <Save size={15} />
-            Submit Order
+            {saveSalesOrderLoading
+              ? <><Loader2 size={15} className="animate-spin" /> Saving...</>
+              : <><Save size={15} /> Submit Order</>}
           </button>
         </div>
       </div>

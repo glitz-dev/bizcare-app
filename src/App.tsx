@@ -14,6 +14,7 @@ import PurchaseReturn from './pages/procurement/PurchaseReturn'
 import ServiceBill from './pages/procurement/ServiceBill'
 import SalesQuotation from './pages/sales/SalesQuotation'
 import SalesOrder from './pages/sales/SalesOrder'
+import DeliveryNote from './pages/sales/DeliveryNote'
 
 const App = () => {
   return (
@@ -36,6 +37,7 @@ const App = () => {
           <Route path="/Inventory/service-bill" element={<ServiceBill />} />
           <Route path="/inventory/salesquotationdetail" element={<SalesQuotation />} />
           <Route path="/inventory/sales-order" element={<SalesOrder />} />
+          <Route path="/inventory/delivery-note" element={<DeliveryNote />} />
         </Route>
         
         {/* 404 Route */}
