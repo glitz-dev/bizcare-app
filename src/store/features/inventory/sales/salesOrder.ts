@@ -333,6 +333,135 @@ export interface GetSalesOrdersParams {
     finYearId?: number;
 }
 
+export interface SalesOrderDetailItem {
+    SlNo: number;
+    ItemID: number;
+    ItemCode: string;
+    ItemName: string;
+    SalesUnitID: number;
+    SalesUnit: string;
+    Quantity: string;
+    OrderedQty: number;
+    SalesRate: number;
+    DiscountPercentage: number;
+    DiscountAmount: string;
+    GrossAmount: number;
+    Amount: string;
+    TaxRate: string;
+    CGSTPer: number;
+    SGSTPer: number;
+    CGSTAmt: string;
+    SGSTAmt: string;
+    IGSTAmt: string;
+    UTGSTAmt: string;
+    CESSAmt: string;
+    VATAmt: string;
+    BatchID: number;
+    Barcode: string;
+    RateOn: string;
+    RateBasedOnSqm: boolean;
+    UnitMultiplier: number;
+    StockAvailable: boolean;
+    Label: string;
+}
+
+export interface SaveSalesOrderPayload {
+    SalesOrderDateStr: string;
+    DeliveryWeekStr: string;
+    TaxPercHead: string;
+    Amendment: boolean;
+    Approved: boolean;
+    BankID: number;
+    BankName: string;
+    BillwiseDiscountAmt: string;
+    BillwiseDiscountPer: number;
+    CBM: string;
+    ChequeDate: string | null;
+    Currency: string;
+    CurrencyID: number;
+    CustRefDate: string;
+    CustRefDateStr: string;
+    CustomerAddress: string | null;
+    CustomerCode: string;
+    CustomerID: number;
+    CustomerName: string;
+    DaysToComplete: number | null;
+    DeliveryWeek: string;
+    DocumentID: number;
+    DocumentName: string;
+    ECGCLimit: number | null;
+    ExRate: number;
+    FinanceAvailable: boolean | null;
+    GrossAmount: string;
+    GrossAmountBase: string;
+    Intercompany: boolean;
+    InvoiceTaxType: string;
+    InvoiceTaxTypeID: number;
+    IsGST: boolean;
+    IsLocalOrder: boolean;
+    LstSalesOrderDetails: SalesOrderDetailItem[];
+    ManualyChangedDocNo: boolean;
+    MerchantExpPer: number;
+    NetAmount: string;
+    NetAmountBase: string;
+    NetTotal: string;
+    NetTotalBase: string;
+    OtherAdditionalAmount: string;
+    OtherAdditionalAmountBase: string;
+    OtherDeductionAmount: string;
+    OtherDeductionAmountBase: string;
+    PayDaysFromBL: number | null;
+    PaymentTerm: string;
+    PaymentTermsID: number;
+    PaymentTypeID: number;
+    PaymentTypeName: string;
+    PreNetAmount: string;
+    PreNetAmountBase: string;
+    Prefix: string;
+    ProbableAdvDate: string | null;
+    ProdCompletionDate: string | null;
+    ProjectedArrivalDate: string | null;
+    ReviewDate: string;
+    ReviewDateStr: string;
+    ReviewedBy: number;
+    ReviewedByName: string;
+    ReviewedOn: string;
+    SalesOrderDate: string;
+    SalesOrderNo: string;
+    ShipmentDate: string | null;
+    StartingNo: number;
+    StatusDetails: string;
+    StatusID: number;
+    StoreID: number;
+    StoreName: string;
+    Suffix: string | null;
+    SupplyType: string;
+    SupplyTypeID: number;
+    TaxAmountHead: string;
+    TaxInvoice: boolean;
+    TaxMasterID: number;
+    TotalCESSAmt: number;
+    TotalCGSTAmt: number;
+    TotalDiscount: string;
+    TotalDiscountBase: string;
+    TotalIGSTAmt: number;
+    TotalQuantity: string;
+    TotalSGSTAmt: number;
+    TotalTax: string;
+    TotalTaxBase: string;
+    TotalUTGSTAmt: number;
+    TotalVATAmount: number;
+}
+
+export interface SaveSalesOrderResult {
+    Success: boolean;
+    Message: string;
+    MessageId: string | null;
+    Id: number;
+    Info: any;
+    Approve: any;
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 interface SalesOrderState {
@@ -455,6 +584,10 @@ interface SalesOrderState {
     salesOrders: SalesOrderListItem[];
     salesOrdersLoading: boolean;
     salesOrdersError: string | null;
+
+    saveSalesOrderResult: SaveSalesOrderResult | null;
+    saveSalesOrderLoading: boolean;
+    saveSalesOrderError: string | null;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -579,6 +712,10 @@ const initialState: SalesOrderState = {
     salesOrders: [],
     salesOrdersLoading: false,
     salesOrdersError: null,
+
+    saveSalesOrderResult: null,
+    saveSalesOrderLoading: false,
+    saveSalesOrderError: null,
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -2002,6 +2139,52 @@ export const fetchSalesOrders = createAsyncThunk<
     }
 );
 
+export const saveSalesOrder = createAsyncThunk<
+    SaveSalesOrderResult,
+    { body: SaveSalesOrderPayload; companyId?: number; finYearId?: number },
+    { state: RootState; rejectValue: string }
+>(
+    "salesOrder/saveSalesOrder",
+    async (params, { rejectWithValue, getState }) => {
+        const token = getCleanToken(getState());
+        if (!token) return rejectWithValue("No authentication token found. Please login again.");
+
+        const companyId = params.companyId ?? 1;
+        const finYearId = params.finYearId ?? 2;
+
+        try {
+            const url = new URL(
+                "https://erp.glitzit.com/service/api/SalesOrder/SaveChanges"
+            );
+
+            const response = await fetch(url.toString(), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token,
+                    "x-company-id": String(companyId),
+                    "x-finyear-id": String(finYearId),
+                },
+                body: JSON.stringify(params.body),
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const json: ServerResponse<null> = await response.json();
+
+            if (!json.Server?.Success) {
+                return rejectWithValue(
+                    json.Server?.Message || "Failed to save sales order"
+                );
+            }
+
+            return json.Server as SaveSalesOrderResult;
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
 const salesOrderSlice = createSlice({
     name: "salesOrder",
     initialState,
@@ -2125,6 +2308,10 @@ const salesOrderSlice = createSlice({
         clearSalesOrders(state) {
             state.salesOrders = [];
             state.salesOrdersError = null;
+        },
+        clearSaveSalesOrder(state) {
+            state.saveSalesOrderResult = null;
+            state.saveSalesOrderError = null;
         },
         resetSalesOrder() {
             return initialState;
@@ -2550,12 +2737,27 @@ const salesOrderSlice = createSlice({
             .addCase(fetchSalesOrders.rejected, (state, action) => {
                 state.salesOrdersLoading = false;
                 state.salesOrdersError = action.payload ?? "Unknown error";
+            })
+
+            // Save Sales Order
+            .addCase(saveSalesOrder.pending, (state) => {
+                state.saveSalesOrderLoading = true;
+                state.saveSalesOrderError = null;
+                state.saveSalesOrderResult = null;
+            })
+            .addCase(saveSalesOrder.fulfilled, (state, action) => {
+                state.saveSalesOrderLoading = false;
+                state.saveSalesOrderResult = action.payload;
+            })
+            .addCase(saveSalesOrder.rejected, (state, action) => {
+                state.saveSalesOrderLoading = false;
+                state.saveSalesOrderError = action.payload ?? "Unknown error";
             });
     },
 });
 
 // ─── Actions & Reducer ────────────────────────────────────────────────────────
 
-export const { clearBaseCurrency, clearSalesOrderDocuments, clearLoggedInCompany, clearPaymentTypes, clearDefaultSupplyType, clearCompanyCurrency, clearItemsCompanies, clearDefaultStatus, clearPendingSalesQuotations, clearStatusForCompleted, clearInvPreference, clearUserTableColumns, clearCurrentUser, clearDefaultPartyCategory, clearCurrencyList, clearDefaultStockTypes, clearGstEnable, clearItemQualities, clearUserFormWiseDocuments, clearVendors, clearInvoiceTaxTypes, clearBanks, clearPaymentTerms, clearCustomers, clearCustomerCodes, clearProductDetails, clearProductionItemDetail, clearDefaultStore, clearStoreStartWith, clearSalesOrders, resetSalesOrder } = salesOrderSlice.actions;
+export const { clearBaseCurrency, clearSalesOrderDocuments, clearLoggedInCompany, clearPaymentTypes, clearDefaultSupplyType, clearCompanyCurrency, clearItemsCompanies, clearDefaultStatus, clearPendingSalesQuotations, clearStatusForCompleted, clearInvPreference, clearUserTableColumns, clearCurrentUser, clearDefaultPartyCategory, clearCurrencyList, clearDefaultStockTypes, clearGstEnable, clearItemQualities, clearUserFormWiseDocuments, clearVendors, clearInvoiceTaxTypes, clearBanks, clearPaymentTerms, clearCustomers, clearCustomerCodes, clearProductDetails, clearProductionItemDetail, clearDefaultStore, clearStoreStartWith, clearSalesOrders, clearSaveSalesOrder, resetSalesOrder } = salesOrderSlice.actions;
 
 export default salesOrderSlice.reducer;

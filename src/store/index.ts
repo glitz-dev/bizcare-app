@@ -7,6 +7,7 @@ import purchaseReturnReducer from './features/inventory/procurement/purchaseRetu
 import ServiceBillReducer from './features/inventory/procurement/serviceBillSlice';
 import SalesQuotationReducer from './features/inventory/sales/salesQuotationSlice';
 import SalesOrderReducer from './features/inventory/sales/salesOrder';
+import DeliveryNoteReducer from './features/inventory/sales/deliveryNoteSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     serviceBill: ServiceBillReducer,
     salesQuotation: SalesQuotationReducer,
     salesOrder: SalesOrderReducer,
+    deliveryNote: DeliveryNoteReducer,
 
   },
 });

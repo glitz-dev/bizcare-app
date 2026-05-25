@@ -9,7 +9,7 @@ import {
 } from "../../common/DataTable";
 import { PageFilters } from "../../common/PageFilters";
 import { PageHeader } from "../../common/PageHeader";
-import { User, ShoppingCart } from "lucide-react";
+import { User, ShoppingCart, Check, AlertCircle, X } from "lucide-react";
 import { AppDispatch, RootState } from "@/store";
 import CreateSalesOrder from "../../components/CreateSalesOrder";
 import {
@@ -37,6 +37,47 @@ type SalesOrderRow = {
   createdDate: string;
   modifiedDate: string;
 };
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+type ToastType = "success" | "error";
+interface ToastProps { message: string; type: ToastType; onClose: () => void }
+function Toast({ message, type, onClose }: ToastProps) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 5000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-2xl shadow-2xl min-w-[300px] max-w-sm"
+      style={{
+        background: type === "success" ? "#f0fdf4" : "#fef2f2",
+        border: `1.5px solid ${type === "success" ? "#bbf7d0" : "#fecaca"}`,
+        fontFamily: "'DM Sans', sans-serif",
+      }}
+    >
+      <div
+        className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: type === "success" ? "#dcfce7" : "#fee2e2" }}
+      >
+        {type === "success"
+          ? <Check size={16} strokeWidth={2.5} style={{ color: "#16a34a" }} />
+          : <AlertCircle size={16} strokeWidth={2.5} style={{ color: "#dc2626" }} />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold" style={{ color: type === "success" ? "#15803d" : "#b91c1c" }}>
+          {type === "success" ? "Order Saved Successfully" : "Save Failed"}
+        </p>
+        <p className="text-xs mt-0.5 break-words" style={{ color: type === "success" ? "#166534" : "#991b1b" }}>
+          {message}
+        </p>
+      </div>
+      <button onClick={onClose} className="shrink-0 mt-0.5 hover:opacity-60 transition-opacity">
+        <X size={14} style={{ color: type === "success" ? "#16a34a" : "#dc2626" }} />
+      </button>
+    </div>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +117,7 @@ const SalesOrder = () => {
 
   // ─── View state ─────────────────────────────────────────────────────────
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // ─── Filter state ───────────────────────────────────────────────────────
   const [fromDate, setFromDate] = useState(getOneMonthAgo());
@@ -139,6 +181,17 @@ const SalesOrder = () => {
   const handleCreateNew = () => {
     setShowCreateForm(true);
   };
+
+  // Called by CreateSalesOrder on successful save — store the message,
+  // navigate back, then re-fetch so the new record appears in the table.
+  const handleSaveSuccess = useCallback((message: string) => {
+    setSuccessMessage(message);
+  }, []);
+
+  const handleBackFromCreate = useCallback(() => {
+    setShowCreateForm(false);
+    dispatch(fetchSalesOrders({ fromDate, toDate }));
+  }, [dispatch, fromDate, toDate]);
 
   // ─── Columns ────────────────────────────────────────────────────────────
   const columns: Column<SalesOrderRow>[] = useMemo(
@@ -403,11 +456,25 @@ const SalesOrder = () => {
 
   // ─── List view ──────────────────────────────────────────────────────────
   if (showCreateForm) {
-    return <CreateSalesOrder onBack={() => setShowCreateForm(false)} />;
+    return (
+      <CreateSalesOrder
+        onBack={handleBackFromCreate}
+        onSaveSuccess={handleSaveSuccess}
+      />
+    );
   }
 
   return (
     <>
+      {/* ── Success toast after save+redirect ── */}
+      {successMessage && (
+        <Toast
+          message={successMessage}
+          type="success"
+          onClose={() => setSuccessMessage(null)}
+        />
+      )}
+
       <PageHeader
         title="SALES ORDER"
         subtitle="Details"
