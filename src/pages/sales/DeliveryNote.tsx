@@ -1,12 +1,12 @@
 "use client";
-import React, { useState, useMemo, useCallback } from "react";
-import { useDispatch } from "react-redux";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { type Column } from "react-data-grid";
 import { DataTable, ActionsCell, FilterHeader } from "../../common/DataTable";
 import { PageFilters } from "../../common/PageFilters";
 import { PageHeader } from "../../common/PageHeader";
-import { AppDispatch } from "@/store";
-import { ClipboardList, User, FileDown } from "lucide-react";
+import { AppDispatch, RootState } from "@/store";
+import { ClipboardList, User, FileDown, CheckCircle2, X, AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -14,6 +14,134 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import CreateDeliveryNote from "../../components/Createdeliverynote";
+import {
+  fetchDeliveryNotes,
+  clearDeliveryNotes,
+  deleteDeliveryNote,
+  clearDeleteDeliveryNote,
+} from "../../store/features/inventory/sales/deliveryNoteSlice";
+import type { DeliveryNoteListItem } from "../../store/features/inventory/sales/deliveryNoteSlice";
+
+// ─── Success Toast ────────────────────────────────────────────────────────────
+
+function SuccessToast({ message, onClose }: { message: string; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-2xl shadow-2xl min-w-[280px] max-w-sm"
+      style={{ background: "#f0fdf4", border: "1.5px solid #bbf7d0" }}
+    >
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#dcfce7" }}>
+        <CheckCircle2 size={16} strokeWidth={2.5} style={{ color: "#16a34a" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold" style={{ color: "#15803d" }}>Note Saved</p>
+        <p className="text-xs mt-0.5 break-words" style={{ color: "#166534" }}>{message}</p>
+      </div>
+      <button onClick={onClose} className="shrink-0 mt-0.5 hover:opacity-60 transition-opacity">
+        <X size={14} style={{ color: "#16a34a" }} />
+      </button>
+    </div>
+  );
+}
+
+// ─── Confirm Delete Dialog ────────────────────────────────────────────────────
+
+function ConfirmDialog({
+  dnNo,
+  loading,
+  onConfirm,
+  onCancel,
+}: {
+  dnNo: string;
+  loading: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={!loading ? onCancel : undefined}
+      />
+      {/* Dialog */}
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4"
+        style={{ border: "1.5px solid #fecaca" }}
+      >
+        {/* Icon + heading */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#fee2e2" }}>
+            <Trash2 size={18} style={{ color: "#dc2626" }} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-800">Delete Delivery Note</p>
+            <p className="text-xs text-slate-400 mt-0.5">This action cannot be undone</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <p className="text-sm text-slate-600">
+          Are you sure you want to delete delivery note{" "}
+          <span className="font-bold text-slate-800">{dnNo}</span>?
+        </p>
+
+        {/* Buttons */}
+        <div className="flex gap-3 justify-end mt-1">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all hover:bg-slate-50 disabled:opacity-50"
+            style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ background: "#dc2626" }}
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {loading ? "Deleting…" : "Yes, Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Error Toast ──────────────────────────────────────────────────────────────
+
+function ErrorToast({ message, onClose }: { message: string; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-[9999] flex items-start gap-3 px-5 py-4 rounded-2xl shadow-2xl min-w-[280px] max-w-sm"
+      style={{ background: "#fef2f2", border: "1.5px solid #fecaca" }}
+    >
+      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: "#fee2e2" }}>
+        <AlertTriangle size={16} strokeWidth={2.5} style={{ color: "#dc2626" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold" style={{ color: "#b91c1c" }}>Delete Failed</p>
+        <p className="text-xs mt-0.5 break-words" style={{ color: "#991b1b" }}>{message}</p>
+      </div>
+      <button onClick={onClose} className="shrink-0 mt-0.5 hover:opacity-60 transition-opacity">
+        <X size={14} style={{ color: "#dc2626" }} />
+      </button>
+    </div>
+  );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,65 +222,128 @@ const DeliveryNote = () => {
   // ── View state: "list" | "create" ──────────────────────────────────────
   const [view, setView] = useState<"list" | "create">("list");
 
+  // ── Success toast state ─────────────────────────────────────────────────
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // ── Delete confirm dialog state ─────────────────────────────────────────
+  const [confirmDelete, setConfirmDelete] = useState<DeliveryNoteRow | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+
+  // ── Local deleted IDs (for instant removal before re-fetch) ─────────────
+  const [deletedIds, setDeletedIds] = useState<Set<number>>(new Set());
+
   // ── Filter state ────────────────────────────────────────────────────────
   const [fromDate, setFromDate] = useState(getOneMonthAgo());
   const [toDate, setToDate] = useState(getToday());
   const [selectedItem, setSelectedItem] = useState("");
 
-  // ── Mock data ───────────────────────────────────────────────────────────
-  const [deliveryNotes] = useState<DeliveryNoteRow[]>([
-    {
-      id: 1,
-      slNo: 1,
-      dnNo: "DN-ZVT-20",
-      dnDate: "04/20/2026",
-      customer: "CUSTOMER567",
-      challanNo: "Cha567",
-      store: "XXXX",
-      salesman: "DEEPAK",
-      amount: 1770,
-      stockStatus: "Available",
-    },
-    {
-      id: 2,
-      slNo: 2,
-      dnNo: "DN-ZVT-21",
-      dnDate: "04/20/2026",
-      customer: "CUSTOMER567",
-      challanNo: "Chall678",
-      store: "XXXX",
-      salesman: "DEEPAK",
-      amount: 5310,
-      stockStatus: "Partial",
-    },
-    {
-      id: 3,
-      slNo: 3,
-      dnNo: "DN-ZVT-22",
-      dnDate: "05/05/2026",
-      customer: "CUSTOMER567",
-      challanNo: "Hjhj",
-      store: "XXXX",
-      salesman: "DEEPAK",
-      amount: 2642.64,
-      stockStatus: "Reserved",
-    },
-  ]);
-  const deliveryNotesLoading = false;
-  const deliveryNotesError: string | null = null;
+  // ── Redux: delivery notes list ───────────────────────────────────────────
+  const rawDeliveryNotes = useSelector(
+    (s: RootState) => s.deliveryNote?.deliveryNotes ?? []
+  );
+  const deliveryNotesLoading = useSelector(
+    (s: RootState) => s.deliveryNote?.deliveryNotesLoading ?? false
+  );
+  const deliveryNotesError = useSelector(
+    (s: RootState) => s.deliveryNote?.deliveryNotesError ?? null
+  );
+
+  // ── Extra rows prepended after a successful create ───────────────────────
+  const [extraRows, setExtraRows] = useState<DeliveryNoteRow[]>([]);
+
+  // ── Map API response → table rows ────────────────────────────────────────
+  const deliveryNotes: DeliveryNoteRow[] = useMemo(
+    () =>
+      rawDeliveryNotes.map((item: DeliveryNoteListItem) => ({
+        id:          item.DeliveryNoteID,
+        slNo:        item.rowAscNum,
+        dnNo:        item.DeliveryNoteNo,
+        dnDate:      item.DeliveryNoteDate,
+        customer:    item.Customer,
+        challanNo:   item.DeliveryChallanNo ?? "—",
+        store:       item.StoreName ?? "—",
+        salesman:    item.Salesman ?? "—",
+        amount:      item.NetAmount,
+        stockStatus: "",           // not returned by list API — left blank
+      })),
+    [rawDeliveryNotes]
+  );
+
+  // ── Merged rows: newly created notes on top, then fetched list ──────────
+  const allDeliveryNotes = useMemo(() => {
+    const rows = [
+      ...extraRows,
+      ...deliveryNotes.map((r, i) => ({ ...r, slNo: extraRows.length + i + 1 })),
+    ];
+    return rows.filter((r) => !deletedIds.has(r.id));
+  }, [extraRows, deliveryNotes, deletedIds]);
+
+  // ── Fetch helper (reused by mount + search button) ───────────────────────
+  const doFetch = useCallback(() => {
+    dispatch(fetchDeliveryNotes({ fromDate, toDate }));
+  }, [dispatch, fromDate, toDate]);
+
+  // ── Fetch on mount; clear on unmount ────────────────────────────────────
+  useEffect(() => {
+    doFetch();
+    return () => { dispatch(clearDeliveryNotes()); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleSearch = useCallback(() => {
-    // dispatch(fetchDeliveryNotes({ fromDate, toDate }));
-  }, [fromDate, toDate]);
+    doFetch();
+  }, [doFetch]);
+
+  const handleSaveSuccess = useCallback((note: {
+    dnNo: string; dnDate: string; customer: string; challanNo: string;
+    store: string; salesman: string; amount: number; message: string;
+  }) => {
+    setExtraRows((prev) => [
+      {
+        id: Date.now(),           // temporary unique id until the list re-fetches
+        slNo: 1,
+        dnNo:        note.dnNo,
+        dnDate:      note.dnDate,
+        customer:    note.customer,
+        challanNo:   note.challanNo,
+        store:       note.store,
+        salesman:    note.salesman,
+        amount:      note.amount,
+        stockStatus: "",
+      },
+      ...prev,
+    ]);
+    setSuccessToast(note.message);
+    setView("list");
+  }, []);
 
   const handleEdit = useCallback((row: DeliveryNoteRow) => {
     console.log("Edit", row);
   }, []);
 
   const handleDelete = useCallback((row: DeliveryNoteRow) => {
-    console.log("Delete", row);
+    setConfirmDelete(row);
   }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!confirmDelete) return;
+    setDeleteLoading(true);
+    const result = await dispatch(deleteDeliveryNote({ id: confirmDelete.id }));
+    setDeleteLoading(false);
+    if (deleteDeliveryNote.fulfilled.match(result)) {
+      setDeletedIds((prev) => new Set(prev).add(confirmDelete.id));
+      setExtraRows((prev) => prev.filter((r) => r.id !== confirmDelete.id));
+      dispatch(clearDeleteDeliveryNote());
+      setConfirmDelete(null);
+    } else {
+      const errMsg = typeof result.payload === "string"
+        ? result.payload
+        : "Failed to delete delivery note. Please try again.";
+      setErrorToast(errMsg);
+      setConfirmDelete(null);
+    }
+  }, [confirmDelete, dispatch]);
 
   const handlePdf = useCallback((row: DeliveryNoteRow) => {
     console.log("PDF", row);
@@ -332,12 +523,26 @@ const DeliveryNote = () => {
 
   // ─── Conditional render ──────────────────────────────────────────────────
   if (view === "create") {
-    return <CreateDeliveryNote onBack={() => setView("list")} />;
+    return <CreateDeliveryNote onBack={() => setView("list")} onSaveSuccess={handleSaveSuccess} />;
   }
 
   // ─── List view ───────────────────────────────────────────────────────────
   return (
     <>
+      {successToast && (
+        <SuccessToast message={successToast} onClose={() => setSuccessToast(null)} />
+      )}
+      {errorToast && (
+        <ErrorToast message={errorToast} onClose={() => setErrorToast(null)} />
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          dnNo={confirmDelete.dnNo}
+          loading={deleteLoading}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
       <PageHeader
         title="DELIVERY NOTE"
         subtitle="Details"
@@ -362,7 +567,7 @@ const DeliveryNote = () => {
 
         <DataTable
           columns={columns}
-          rows={deliveryNotes}
+          rows={allDeliveryNotes}
           rowKey="id"
           loading={deliveryNotesLoading}
           error={deliveryNotesError}

@@ -22,6 +22,12 @@ export interface DefaultStore {
     StoreName: string;
 }
 
+export interface Store {
+    StoreID: number;
+    StoreName: string;
+    CompanyStore: boolean | null;
+}
+
 export interface PendingSalesQuotation {
     SalesQuotationID: number;
     QuotationNo: string;
@@ -428,6 +434,173 @@ export interface SelectedSalesOrder {
     ReviewedByName: string | null;
 }
 
+export interface DeliveryNoteDetail {
+    SalesOrderTID: number;
+    SalesOrderMID: number;
+    SalesOrderM: null;
+    SalesQuotationMID: number | null;
+    SalesQuotationTID: number | null;
+    CompanyID: number;
+    CompanyM: null;
+    ItemID: number;
+    ItemM: null;
+    ItemDescription: string | null;
+    BatchID: number;
+    ItemBatchM: null;
+    Quantity: number;
+    UnitMultiplier: number;
+    SalesRate: string;
+    DiscountPercentage: number;
+    DiscountAmount: string;
+    SalesUnitID: number;
+    SGSTPer: number | null;
+    CGSTPer: number | null;
+    IGSTPer: number | null;
+    UTGSTPer: number | null;
+    CESSPer: number | null;
+    VATPer: number | null;
+    SGSTAmt: string;
+    CGSTAmt: string;
+    IGSTAmt: number;
+    UTGSTAmt: number;
+    CESSAmt: number;
+    VATAmt: number;
+    TaxID: number | null;
+    AccTaxM: null;
+    TaxPercentage: number;
+    TaxRate: string;
+    ServiceTaxID: number | null;
+    ServiceTax: null;
+    ServiceTaxPercentage: number | null;
+    Amount: string;
+    BranchID: number | null;
+    FinYearID: number | null;
+    Status: boolean;
+    UserID: number;
+    EntryDate: string;
+    ModifiedUserID: number | null;
+    ModifiedDate: string | null;
+    SalesOrderTGuid: string;
+    SoldQuantity: number;
+    InvoicedQty: number | null;
+    SpecID: number | null;
+    Specifications: string | null;
+    CompanyName: string | null;
+    ItemName: string | null;
+    ItemCode: string | null;
+    ItemStoreName: string | null;
+    SizeName: string | null;
+    DesignName: string | null;
+    DesignCode: string | null;
+    ImagePath: string | null;
+    SlNo: number;
+    Barcode: string | null;
+    StockTypeID: number;
+    BatchName: string | null;
+    SQQty: number;
+    SOQty: number;
+    ItemLength: number | null;
+    ItemBreadth: number | null;
+    ItemSqrMeter: number | null;
+    SalesUnit: string | null;
+    GrossAmount: string;
+    CustomerCode: string | null;
+    RateBasedOnID: number;
+    RateOn: string | null;
+    SqmQuantity: number | null;
+    PileHeight: number | null;
+    Spec: string | null;
+    InvDtlCount: number;
+    InvQty: number;
+    PackingItemCount: number;
+    StoreID: number;
+    SplittedDiscAmt: number;
+    Label: string | null;
+}
+
+export interface DeliveryNoteM {
+    DeliveryNoteID: number;
+    DeliveryNoteNo: string;
+    DeliveryNoteDateStr: string;
+    DeliveryNoteDate: string;
+    DocumentID: number;
+    DocumentName: string | null;
+    CustomerID: number;
+    CustomerName: string | null;
+    StoreID: number;
+    StoreName: string | null;
+    InvoiceTaxTypeID: number;
+    InvoiceTaxType: string | null;
+    TaxMasterID: number;
+    IsGST: boolean;
+    SalesmanID: number;
+    Salesman: string | null;
+    PaymentTypeID: number;
+    PaymentTypeName: string | null;
+    CurrencyID: number;
+    Currency: string | null;
+    DeliveryChallanNo: string | null;
+    BillingAddress: string | null;
+    QtnNos: string | null;
+    QuotationID: number;
+    BillwiseDiscountPer: number;
+    BillwiseDiscountAmt: string;
+    BillwiseDiscountAmtBase: string;
+    GrossAmount: string;
+    GrossAmountBase: string;
+    TotalDiscount: string;
+    TotalDiscountBase: string;
+    TotalTax: string;
+    TotalTaxBase: string;
+    TotalSGSTAmt: number;
+    TotalCGSTAmt: number;
+    TotalIGSTAmt: number;
+    TotalUTGSTAmt: number;
+    TotalCESSAmt: number;
+    TotalVATAmount: number;
+    OtherAdditionalAmount: string;
+    OtherAdditionalAmountBase: string;
+    OtherDeductionAmount: string;
+    OtherDeductionAmountBase: string;
+    PreNetAmount: string;
+    PreNetAmountBase: string;
+    NetAmount: string;
+    NetAmountBase: string;
+    NetTotal: string;
+    NetTotalBase: string;
+    TotalQuantity: string;
+    TaxPercHead: string;
+    TaxAmountHead: string;
+    CategoryID: number | null;
+    CategoryName: string | null;
+    SubCategoryID: number | null;
+    SubCategoryName: string | null;
+    ChequeDate: string | null;
+    DocumentUpload: string | null;
+    LstDeliveryNoteDetails: DeliveryNoteDetail[];
+    LstDeliveryNoteAdditionalDetails: any[];
+}
+
+export interface DeliveryNoteListItem {
+    rowAscNum: number;
+    rowDescNum: number;
+    DeliveryNoteID: number;
+    DeliveryNoteNo: string;
+    DeliveryNoteDate: string;
+    Customer: string;
+    NetAmount: number;
+    DeliveryChallanNo: string | null;
+    StoreName: string | null;
+    Salesman: string | null;
+    TotalRowCount: number;
+}
+
+export interface SaveDeliveryNoteResponse {
+    Success: boolean;
+    Message: string;
+    Id: number;
+}
+
 export interface ServerResponse<T> {
     Server: {
         Success: boolean;
@@ -502,6 +675,24 @@ interface DeliveryNoteState {
     selectedSalesOrder: SelectedSalesOrder | null;
     selectedSalesOrderLoading: boolean;
     selectedSalesOrderError: string | null;
+
+    stores: Store[];
+    storesLoading: boolean;
+    storesError: string | null;
+
+    saveDeliveryNoteLoading: boolean;
+    saveDeliveryNoteError: string | null;
+    saveDeliveryNoteSuccess: boolean;
+    savedDeliveryNoteId: number | null;
+
+    deliveryNotes: DeliveryNoteListItem[];
+    deliveryNotesLoading: boolean;
+    deliveryNotesError: string | null;
+    deliveryNotesTotalCount: number;
+
+    deleteDeliveryNoteLoading: boolean;
+    deleteDeliveryNoteError: string | null;
+    deleteDeliveryNoteSuccess: boolean;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -566,6 +757,24 @@ const initialState: DeliveryNoteState = {
     selectedSalesOrder: null,
     selectedSalesOrderLoading: false,
     selectedSalesOrderError: null,
+
+    stores: [],
+    storesLoading: false,
+    storesError: null,
+
+    saveDeliveryNoteLoading: false,
+    saveDeliveryNoteError: null,
+    saveDeliveryNoteSuccess: false,
+    savedDeliveryNoteId: null,
+
+    deliveryNotes: [],
+    deliveryNotesLoading: false,
+    deliveryNotesError: null,
+    deliveryNotesTotalCount: 0,
+
+    deleteDeliveryNoteLoading: false,
+    deleteDeliveryNoteError: null,
+    deleteDeliveryNoteSuccess: false,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1243,7 +1452,7 @@ export const fetchQtnDetailsForDN = createAsyncThunk<
             );
             url.searchParams.set("QuotationMID", String(params.quotationMID));
             url.searchParams.set("InvoiceTaxTypeID", String(params.invoiceTaxTypeID));
-            url.searchParams.set("QuotationTID", String(params.quotationTID ?? ""));
+            url.searchParams.set("QuotationTID", String(params.quotationTID ?? 0));
 
             const response = await fetch(url.toString(), {
                 method: "GET",
@@ -1319,6 +1528,215 @@ export const fetchSelectedSalesOrder = createAsyncThunk<
     }
 );
 
+export const fetchStores = createAsyncThunk<
+    Store[],
+    { startWith?: string; companyId?: number; finYearId?: number } | void,
+    { state: RootState; rejectValue: string }
+>(
+    "deliveryNote/fetchStores",
+    async (params, { rejectWithValue, getState }) => {
+        const state = getState();
+        const token = getCleanToken(state);
+        if (!token) return rejectWithValue("No authentication token found. Please login again.");
+
+        const companyId = getCompanyId(state, params?.companyId);
+        const finYearId = getFinYearId(state, params?.finYearId);
+
+        try {
+            const url = new URL(
+                "https://erp.glitzit.com/service/api/Store/GetStoreStartWith"
+            );
+            url.searchParams.set("startWith", params?.startWith ?? "");
+
+            const response = await fetch(url.toString(), {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token,
+                    "x-company-id": String(companyId),
+                    "x-finyear-id": String(finYearId),
+                },
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const json: ServerResponse<Store[]> = await response.json();
+
+            if (!json.Server?.Success) {
+                return rejectWithValue(
+                    json.Server?.Message || "Failed to fetch stores"
+                );
+            }
+
+            return json.Server.Data;
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
+export const saveDeliveryNote = createAsyncThunk<
+    SaveDeliveryNoteResponse,
+    { payload: DeliveryNoteM; companyId?: number; finYearId?: number },
+    { state: RootState; rejectValue: string }
+>(
+    "deliveryNote/saveDeliveryNote",
+    async (params, { rejectWithValue, getState }) => {
+        const state = getState();
+        const token = getCleanToken(state);
+        if (!token) return rejectWithValue("No authentication token found. Please login again.");
+
+        const companyId = getCompanyId(state, params.companyId);
+        const finYearId = getFinYearId(state, params.finYearId);
+
+        try {
+            const url = new URL(
+                "https://erp.glitzit.com/service/api/DeliveryNote/SaveChanges"
+            );
+
+            const response = await fetch(url.toString(), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token,
+                    "x-company-id": String(companyId),
+                    "x-finyear-id": String(finYearId),
+                },
+                body: JSON.stringify(params.payload),
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const json: ServerResponse<string> = await response.json();
+
+            if (!json.Server?.Success) {
+                return rejectWithValue(
+                    json.Server?.Message || "Failed to save delivery note"
+                );
+            }
+
+            return {
+                Success: json.Server.Success,
+                Message: json.Server.Message,
+                Id: json.Server.Id ?? 0,
+            };
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
+export const fetchDeliveryNotes = createAsyncThunk<
+    { items: DeliveryNoteListItem[]; totalCount: number },
+    {
+        fromDate: string;
+        toDate: string;
+        rowsPerPage?: number;
+        currentPage?: number;
+        searchStr?: string;
+        companyId?: number;
+        finYearId?: number;
+    },
+    { state: RootState; rejectValue: string }
+>(
+    "deliveryNote/fetchDeliveryNotes",
+    async (params, { rejectWithValue, getState }) => {
+        const state = getState();
+        const token = getCleanToken(state);
+        if (!token) return rejectWithValue("No authentication token found. Please login again.");
+
+        const companyId = getCompanyId(state, params.companyId);
+        const finYearId = getFinYearId(state, params.finYearId);
+
+        try {
+            const url = new URL(
+                "https://erp.glitzit.com/service/api/DeliveryNote/GetDeliveryNotes"
+            );
+            url.searchParams.set("FromDate", params.fromDate);
+            url.searchParams.set("ToDate", params.toDate);
+            url.searchParams.set("rowsPerPage", String(params.rowsPerPage ?? 25));
+            url.searchParams.set("currentPage", String(params.currentPage ?? 1));
+            url.searchParams.set("searchStr", params.searchStr ?? "");
+
+            const response = await fetch(url.toString(), {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token,
+                    "x-company-id": String(companyId),
+                    "x-finyear-id": String(finYearId),
+                },
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const json: ServerResponse<DeliveryNoteListItem[]> = await response.json();
+
+            if (!json.Server?.Success) {
+                return rejectWithValue(
+                    json.Server?.Message || "Failed to fetch delivery notes"
+                );
+            }
+
+            const items = json.Server.Data ?? [];
+            const totalCount = items[0]?.TotalRowCount ?? 0;
+
+            return { items, totalCount };
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
+export const deleteDeliveryNote = createAsyncThunk<
+    { Success: boolean; Message: string | null },
+    { id: number; companyId?: number; finYearId?: number },
+    { state: RootState; rejectValue: string }
+>(
+    "deliveryNote/deleteDeliveryNote",
+    async (params, { rejectWithValue, getState }) => {
+        const state = getState();
+        const token = getCleanToken(state);
+        if (!token) return rejectWithValue("No authentication token found. Please login again.");
+
+        const companyId = getCompanyId(state, params.companyId);
+        const finYearId = getFinYearId(state, params.finYearId);
+
+        try {
+            const url = new URL(
+                "https://erp.glitzit.com/service/api/DeliveryNote/DeleteDeliveryNote"
+            );
+            url.searchParams.set("id", String(params.id));
+
+            const response = await fetch(url.toString(), {
+                method: "POST",
+                headers: {
+                    Authorization: token,
+                    "x-company-id": String(companyId),
+                    "x-finyear-id": String(finYearId),
+                },
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const json: ServerResponse<null> = await response.json();
+
+            if (!json.Server?.Success) {
+                return rejectWithValue(
+                    json.Server?.Message || "Failed to delete delivery note"
+                );
+            }
+
+            return {
+                Success: json.Server.Success,
+                Message: json.Server.Message,
+            };
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const deliveryNoteSlice = createSlice({
@@ -1384,6 +1802,26 @@ const deliveryNoteSlice = createSlice({
         clearSelectedSalesOrder(state) {
             state.selectedSalesOrder = null;
             state.selectedSalesOrderError = null;
+        },
+        clearStores(state) {
+            state.stores = [];
+            state.storesError = null;
+        },
+        clearSaveDeliveryNote(state) {
+            state.saveDeliveryNoteLoading = false;
+            state.saveDeliveryNoteError = null;
+            state.saveDeliveryNoteSuccess = false;
+            state.savedDeliveryNoteId = null;
+        },
+        clearDeliveryNotes(state) {
+            state.deliveryNotes = [];
+            state.deliveryNotesError = null;
+            state.deliveryNotesTotalCount = 0;
+        },
+        clearDeleteDeliveryNote(state) {
+            state.deleteDeliveryNoteLoading = false;
+            state.deleteDeliveryNoteError = null;
+            state.deleteDeliveryNoteSuccess = false;
         },
         resetDeliveryNote() {
             return initialState;
@@ -1599,6 +2037,67 @@ const deliveryNoteSlice = createSlice({
             .addCase(fetchSelectedSalesOrder.rejected, (state, action) => {
                 state.selectedSalesOrderLoading = false;
                 state.selectedSalesOrderError = action.payload ?? "Unknown error";
+            })
+
+            // Stores
+            .addCase(fetchStores.pending, (state) => {
+                state.storesLoading = true;
+                state.storesError = null;
+            })
+            .addCase(fetchStores.fulfilled, (state, action) => {
+                state.storesLoading = false;
+                state.stores = action.payload;
+            })
+            .addCase(fetchStores.rejected, (state, action) => {
+                state.storesLoading = false;
+                state.storesError = action.payload ?? "Unknown error";
+            })
+
+            // Save Delivery Note
+            .addCase(saveDeliveryNote.pending, (state) => {
+                state.saveDeliveryNoteLoading = true;
+                state.saveDeliveryNoteError = null;
+                state.saveDeliveryNoteSuccess = false;
+                state.savedDeliveryNoteId = null;
+            })
+            .addCase(saveDeliveryNote.fulfilled, (state, action) => {
+                state.saveDeliveryNoteLoading = false;
+                state.saveDeliveryNoteSuccess = true;
+                state.savedDeliveryNoteId = action.payload.Id;
+            })
+            .addCase(saveDeliveryNote.rejected, (state, action) => {
+                state.saveDeliveryNoteLoading = false;
+                state.saveDeliveryNoteError = action.payload ?? "Unknown error";
+            })
+
+            // Delivery Notes List
+            .addCase(fetchDeliveryNotes.pending, (state) => {
+                state.deliveryNotesLoading = true;
+                state.deliveryNotesError = null;
+            })
+            .addCase(fetchDeliveryNotes.fulfilled, (state, action) => {
+                state.deliveryNotesLoading = false;
+                state.deliveryNotes = action.payload.items;
+                state.deliveryNotesTotalCount = action.payload.totalCount;
+            })
+            .addCase(fetchDeliveryNotes.rejected, (state, action) => {
+                state.deliveryNotesLoading = false;
+                state.deliveryNotesError = action.payload ?? "Unknown error";
+            })
+
+            // Delete Delivery Note
+            .addCase(deleteDeliveryNote.pending, (state) => {
+                state.deleteDeliveryNoteLoading = true;
+                state.deleteDeliveryNoteError = null;
+                state.deleteDeliveryNoteSuccess = false;
+            })
+            .addCase(deleteDeliveryNote.fulfilled, (state) => {
+                state.deleteDeliveryNoteLoading = false;
+                state.deleteDeliveryNoteSuccess = true;
+            })
+            .addCase(deleteDeliveryNote.rejected, (state, action) => {
+                state.deleteDeliveryNoteLoading = false;
+                state.deleteDeliveryNoteError = action.payload ?? "Unknown error";
             });
     },
 });
@@ -1621,6 +2120,10 @@ export const {
     clearBatchDetails,
     clearQtnDetailsForDN,
     clearSelectedSalesOrder,
+    clearStores,
+    clearSaveDeliveryNote,
+    clearDeliveryNotes,
+    clearDeleteDeliveryNote,
     resetDeliveryNote,
 } = deliveryNoteSlice.actions;
 
