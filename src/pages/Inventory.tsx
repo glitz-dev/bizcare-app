@@ -61,7 +61,7 @@ const sections: Section[] = [
     items: [
       { label: "Sales Quotation", icon: <CirclePercent size={20} />, href: "/inventory/salesquotationdetail" },
       { label: "Sales Order",     icon: <Receipt size={20} />, href: "/inventory/sales-order" },
-      { label: "Sales Invoice",   icon: <FileText size={20} />, href: "/inventory/salesinvoicedetail" },
+      { label: "Sales Invoice",   icon: <FileText size={20} />, href: "/inventory/sales-invoice" },
       { label: "Sales Return",    icon: <RefreshCw size={20} />, href: "/inventory/salesreturndetail" },
       { label: "Delivery Note",   icon: <Truck size={20} />, href: "/inventory/delivery-note" },
       { label: "Retail Invoice",  icon: <WalletCards size={20} />, href: "/inventory/retailinvoicedetail" },

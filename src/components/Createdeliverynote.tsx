@@ -5,6 +5,7 @@ import type { AppDispatch } from "@/store";
 import {
   fetchDocumentMasters,
   fetchDefaultStore,
+  fetchStores,
   fetchInvoiceTaxTypeDetails,
   fetchAllInvoiceTaxTypes,
   fetchAllCustomers,
@@ -13,6 +14,9 @@ import {
   fetchPendingSalesOrders,
   fetchItemDetailsForOpeningStock,
   fetchBatchDetails,
+  fetchQtnDetailsForDN,
+  fetchSelectedSalesOrder,
+  saveDeliveryNote,
   clearItemDetailsForOpeningStock,
   clearPendingSalesQuotations,
   clearPendingSalesOrders,
@@ -21,8 +25,10 @@ import {
   clearBatchDetails,
   clearAllInvoiceTaxTypes,
   clearInvoiceTaxTypeDetails,
+  clearStores,
+  clearSaveDeliveryNote,
 } from "../store/features/inventory/sales/deliveryNoteSlice";
-import type { ItemDetailsForOpeningStock, BatchDetail } from "../store/features/inventory/sales/deliveryNoteSlice";
+import type { ItemDetailsForOpeningStock, BatchDetail, QtnDetailsForDN, SalesOrderDetail, Store as StoreOption, DeliveryNoteM, DeliveryNoteDetail } from "../store/features/inventory/sales/deliveryNoteSlice";
 import type { RootState } from "@/store";
 import {
   FileText,
@@ -1065,7 +1071,16 @@ type SalesQuotationRow = {
 };
 
 // ── Props now accept customerId driven from parent ──
-function SalesQuotationTable({ customerId }: { customerId: number }) {
+function SalesQuotationTable({
+  customerId,
+  taxType,
+  onCheck,
+}: {
+  customerId: number;
+  taxType: string;
+  onCheck: (quotationId: number, invoiceTaxTypeId: number, checked: boolean) => void;
+}) {
+  const dispatch = useDispatch<AppDispatch>();
   const pendingSalesQuotations = useSelector(
     (state: RootState) => state.deliveryNote?.pendingSalesQuotations ?? EMPTY_ARRAY
   );
@@ -1091,7 +1106,11 @@ function SalesQuotationTable({ customerId }: { customerId: number }) {
   }));
 
   const toggleAddAll = (id: number) => {
-    setAddAllMap((prev) => ({ ...prev, [id]: !prev[id] }));
+    const newChecked = !addAllMap[id];
+    setAddAllMap((prev) => ({ ...prev, [id]: newChecked }));
+    // Use the currently selected tax type (or 0 as fallback)
+    const invoiceTaxTypeId = taxType ? Number(taxType) : 0;
+    onCheck(id, invoiceTaxTypeId, newChecked);
   };
 
   return (
@@ -1281,7 +1300,14 @@ type SalesOrderRow = {
 };
 
 // ── Props now accept customerId driven from parent ──
-function SalesOrdersTable({ customerId }: { customerId: number }) {
+function SalesOrdersTable({
+  customerId,
+  onCheck,
+}: {
+  customerId: number;
+  onCheck: (salesOrderId: number, checked: boolean) => void;
+}) {
+  const dispatch = useDispatch<AppDispatch>();
   const pendingSalesOrders = useSelector(
     (state: RootState) => state.deliveryNote?.pendingSalesOrders ?? EMPTY_ARRAY
   );
@@ -1307,7 +1333,9 @@ function SalesOrdersTable({ customerId }: { customerId: number }) {
   }));
 
   const toggleAddToDelivery = (id: number) => {
-    setAddToDeliveryMap((prev) => ({ ...prev, [id]: !prev[id] }));
+    const newChecked = !addToDeliveryMap[id];
+    setAddToDeliveryMap((prev) => ({ ...prev, [id]: newChecked }));
+    onCheck(id, newChecked);
   };
 
   const selectedCount = rows.filter((r) => r.addToDelivery).length;
@@ -1467,11 +1495,23 @@ function SalesOrdersTable({ customerId }: { customerId: number }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-interface CreateDeliveryNoteProps {
-  onBack?: () => void;
+interface SavedNoteData {
+  dnNo: string;
+  dnDate: string;
+  customer: string;
+  challanNo: string;
+  store: string;
+  salesman: string;
+  amount: number;
+  message: string;
 }
 
-const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
+interface CreateDeliveryNoteProps {
+  onBack?: () => void;
+  onSaveSuccess?: (note: SavedNoteData) => void;
+}
+
+const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack, onSaveSuccess }) => {
   const dispatch = useDispatch<AppDispatch>();
 
   // ── Redux: document masters ──────────────────────────────────────────────────
@@ -1481,6 +1521,10 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
   // ── Redux: default store ─────────────────────────────────────────────────────
   const defaultStore = useSelector((s: RootState) => s.deliveryNote?.defaultStore ?? EMPTY_NULL);
   const defaultStoreLoading = useSelector((s: RootState) => s.deliveryNote?.defaultStoreLoading ?? false);
+
+  // ── Redux: stores (searchable dropdown) ──────────────────────────────────────
+  const stores = useSelector((s: RootState) => s.deliveryNote?.stores ?? EMPTY_ARRAY);
+  const storesLoading = useSelector((s: RootState) => s.deliveryNote?.storesLoading ?? false);
 
   // ── Redux: tax types ─────────────────────────────────────────────────────────
   const invoiceTaxTypeDetails = useSelector((s: RootState) => s.deliveryNote?.invoiceTaxTypeDetails ?? EMPTY_NULL);
@@ -1502,6 +1546,12 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
   // ── Redux: batch details ─────────────────────────────────────────────────────
   const batchDetailsLoading = useSelector((s: RootState) => s.deliveryNote?.batchDetailsLoading ?? false);
 
+  // ── Redux: pending quotations (for QtnNos / QuotationID on submit) ───────────
+  const pendingSalesQuotations = useSelector((s: RootState) => s.deliveryNote?.pendingSalesQuotations ?? EMPTY_ARRAY);
+
+  // ── Redux: save delivery note ────────────────────────────────────────────────
+  const saveDeliveryNoteLoading = useSelector((s: RootState) => s.deliveryNote?.saveDeliveryNoteLoading ?? false);
+
   // Pick the default document (SetDefault === true) or fall back to the first one
   const defaultDoc = documentMasters.find((d) => d.SetDefault) ?? documentMasters[0] ?? null;
 
@@ -1520,6 +1570,8 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
     dispatch(clearInvoiceTaxTypeDetails());
     dispatch(clearItemDetailsForOpeningStock());
     dispatch(clearBatchDetails());
+    dispatch(clearStores());
+    dispatch(clearSaveDeliveryNote());
     dispatch(fetchDocumentMasters());
     dispatch(fetchDefaultStore());
   }, [dispatch]);
@@ -1536,14 +1588,20 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
   }, [dispatch, defaultDoc]);
 
   const [challanNo, setChallanNo] = useState("");
-  const [store, setStore] = useState("");
+  const [storeId, setStoreId] = useState<string>("");
 
-  // Prefill store from API once defaultStore is loaded
+  // Prefill storeId from defaultStore once it loads
   useEffect(() => {
-    if (defaultStore?.StoreName) {
-      setStore(defaultStore.StoreName);
+    if (defaultStore?.StoreID) {
+      setStoreId(String(defaultStore.StoreID));
     }
   }, [defaultStore]);
+
+  const handleStoreOpen = useCallback(() => {
+    if (stores.length === 0) {
+      dispatch(fetchStores());
+    }
+  }, [dispatch, stores.length]);
 
   const [customer, setCustomer] = useState("");
   const [salesman, setSalesman] = useState("");
@@ -1681,19 +1739,367 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
     }
   }, [taxType, defaultStore, dispatch, handleUpdateRow]);
 
+  // ── Helper: convert QtnDetailsForDN[] → LineItem[] ──────────────────────────
+  const mapQtnToLineItems = useCallback(
+    (details: QtnDetailsForDN[], startId: number): LineItem[] => {
+      return details.map((d, i) => ({
+        id: startId + i,
+        itemId: d.ItemID,
+        barcode: d.BarCode ?? "",
+        itemCode: d.ItemCode ?? "",
+        item: d.ItemName ?? "",
+        description: d.ItemDescription ?? "",
+        store: d.StoreName ?? "",
+        sqQty: String(d.SQQty ?? ""),
+        quantity: String(d.Quantity ?? ""),
+        sRate: String(d.SalesRate ?? ""),
+        discountPct: String(d.DiscountPercentage ?? ""),
+        discount: String(d.DiscountAmount ?? ""),
+        taxPct: String(d.TaxValue ?? ""),
+        taxAmt: "0",
+        netAmount: "0",
+        vatPct: String(d.VAT ?? ""),
+        cessPct: String(d.CESS ?? ""),
+        vatAmt: "0",
+        cessAmt: "0",
+      }));
+    },
+    []
+  );
+
+  // ── Helper: convert SalesOrderDetail[] → LineItem[] ──────────────────────────
+  const mapSOToLineItems = useCallback(
+    (details: SalesOrderDetail[], startId: number): LineItem[] => {
+      return details.map((d, i) => ({
+        id: startId + i,
+        itemId: d.ItemID,
+        barcode: d.Barcode ?? "",
+        itemCode: d.ItemCode ?? "",
+        item: d.ItemName ?? "",
+        description: d.ItemDescription ?? "",
+        store: d.ItemStoreName ?? "",
+        sqQty: String(d.SQQty ?? ""),
+        quantity: String(d.Quantity ?? ""),
+        sRate: String(d.SalesRate ?? ""),
+        discountPct: String(d.DiscountPercentage ?? ""),
+        discount: String(d.DiscountAmount ?? ""),
+        taxPct: String(d.TaxPercentage ?? ""),
+        taxAmt: "0",
+        netAmount: String(d.GrossAmount ?? ""),
+        vatPct: String(d.VATPer ?? ""),
+        cessPct: String(d.CESSPer ?? ""),
+        vatAmt: String(d.VATAmt ?? ""),
+        cessAmt: String(d.CESSAmt ?? ""),
+      }));
+    },
+    []
+  );
+
+  // ── Called when user checks/unchecks "Add All" on a quotation row ────────────
+  const handleQuotationCheck = useCallback(
+    async (quotationId: number, invoiceTaxTypeId: number, checked: boolean) => {
+      if (!checked) return; // unchecking → do nothing (keep existing rows)
+      const result = await dispatch(
+        fetchQtnDetailsForDN({ quotationMID: quotationId, invoiceTaxTypeID: invoiceTaxTypeId })
+      );
+      if (fetchQtnDetailsForDN.fulfilled.match(result)) {
+        const newRows = mapQtnToLineItems(result.payload, nextId);
+        if (newRows.length > 0) {
+          setLineItems((prev) => {
+            // Remove the single blank placeholder row if it is the only row and still empty
+            const isPlaceholder =
+              prev.length === 1 &&
+              !prev[0].itemId &&
+              !prev[0].barcode &&
+              !prev[0].item;
+            return isPlaceholder ? newRows : [...prev, ...newRows];
+          });
+          setNextId((n) => n + newRows.length);
+        }
+      }
+    },
+    [dispatch, mapQtnToLineItems, nextId]
+  );
+
+  // ── Called when user checks/unchecks "Add To Delivery" on a sales order row ──
+  const handleSalesOrderCheck = useCallback(
+    async (salesOrderId: number, checked: boolean) => {
+      if (!checked) return;
+      const result = await dispatch(fetchSelectedSalesOrder({ salesOrderID: salesOrderId }));
+      if (fetchSelectedSalesOrder.fulfilled.match(result)) {
+        const details = result.payload.LstSalesOrderDetails ?? [];
+        const newRows = mapSOToLineItems(details, nextId);
+        if (newRows.length > 0) {
+          setLineItems((prev) => {
+            const isPlaceholder =
+              prev.length === 1 &&
+              !prev[0].itemId &&
+              !prev[0].barcode &&
+              !prev[0].item;
+            return isPlaceholder ? newRows : [...prev, ...newRows];
+          });
+          setNextId((n) => n + newRows.length);
+        }
+      }
+    },
+    [dispatch, mapSOToLineItems, nextId]
+  );
+
   const subtotal = lineItems.reduce((sum, r) => sum + (parseFloat(r.quantity) || 0) * (parseFloat(r.sRate) || 0), 0);
   const discountAmt = subtotal * (parseFloat(billwiseDiscountPct) / 100 || 0);
   const netAmount = subtotal - discountAmt + (parseFloat(roundOff) || 0);
 
-  const handleSubmit = () => {
-    console.log("Submit delivery note", { dnNo, dnDate, taxType, challanNo, store, customer, salesman, lineItems, billingAddress, remarks, billwiseDiscountPct, roundOff, netAmount });
-    setToast({ message: "Delivery note submitted successfully.", type: "success" });
-  };
+  const handleSubmit = useCallback(async () => {
+    // ── Validation ────────────────────────────────────────────────────────────
+    if (!taxType) {
+      setToast({ message: "Please select a tax type.", type: "warning" });
+      return;
+    }
+    if (!challanNo.trim()) {
+      setToast({ message: "Please enter a challan number.", type: "warning" });
+      return;
+    }
+    if (!storeId) {
+      setToast({ message: "Please select a store.", type: "warning" });
+      return;
+    }
+    if (!customer) {
+      setToast({ message: "Please select a customer.", type: "warning" });
+      return;
+    }
+    if (!salesman) {
+      setToast({ message: "Please select a salesman.", type: "warning" });
+      return;
+    }
+    const validItems = lineItems.filter((r) => r.itemId !== null && r.quantity !== "" && r.sRate !== "");
+    if (validItems.length === 0) {
+      setToast({ message: "Please add at least one item with quantity and rate.", type: "warning" });
+      return;
+    }
+
+    // ── Derived lookups ───────────────────────────────────────────────────────
+    const selectedCustomer = customers.find((c) => String(c.CustomerID) === customer);
+    const selectedSalesman = salesmen.find((s) => String(s.SalesAgentID) === salesman);
+    const selectedStore    = stores.length > 0
+      ? stores.find((s) => String(s.StoreID) === storeId)
+      : defaultStore?.StoreID === Number(storeId) ? defaultStore : null;
+    const selectedTaxType  = allInvoiceTaxTypes.find((t) => String(t.InvoiceTaxTypeID) === taxType);
+    const checkedQuotations = pendingSalesQuotations.filter((q) => q.SalesQuotationID > 0);
+
+    // ── Totals ────────────────────────────────────────────────────────────────
+    const fmt3 = (n: number) => n.toFixed(3);
+    const totalQty      = validItems.reduce((s, r) => s + (parseFloat(r.quantity) || 0), 0);
+    const grossAmt      = validItems.reduce((s, r) => s + (parseFloat(r.quantity) || 0) * (parseFloat(r.sRate) || 0), 0);
+    const totalDiscount = validItems.reduce((s, r) => s + (parseFloat(r.discount) || 0), 0);
+    const totalTax      = validItems.reduce((s, r) => s + (parseFloat(r.taxAmt) || 0), 0);
+    const totalSGST     = validItems.reduce((s, r) => s + (parseFloat(r.taxAmt) || 0) / 2, 0);
+    const totalCGST     = totalSGST;
+    const totalVAT      = validItems.reduce((s, r) => s + (parseFloat(r.vatAmt) || 0), 0);
+    const totalCESS     = validItems.reduce((s, r) => s + (parseFloat(r.cessAmt) || 0), 0);
+    const discAmt       = grossAmt * (parseFloat(billwiseDiscountPct) / 100 || 0);
+    const preNet        = grossAmt - discAmt;
+    const netAmt        = preNet + totalTax + (parseFloat(roundOff) || 0);
+
+    const nowISO = new Date().toISOString();
+
+    // ── Line items → DeliveryNoteDetail[] ────────────────────────────────────
+    const details: DeliveryNoteDetail[] = validItems.map((r, idx) => {
+      const qty      = parseFloat(r.quantity) || 0;
+      const rate     = parseFloat(r.sRate) || 0;
+      const discPct  = parseFloat(r.discountPct) || 0;
+      const discAmt  = parseFloat(r.discount) || 0;
+      const taxPct   = parseFloat(r.taxPct) || 0;
+      const taxAmt   = parseFloat(r.taxAmt) || 0;
+      const vatPct   = parseFloat(r.vatPct) || 0;
+      const vatAmt   = parseFloat(r.vatAmt) || 0;
+      const cessPct  = parseFloat(r.cessPct) || 0;
+      const cessAmt  = parseFloat(r.cessAmt) || 0;
+      const gross    = qty * rate;
+      const sgst     = taxAmt / 2;
+      const cgst     = sgst;
+
+      return {
+        SalesOrderTID:        0,
+        SalesOrderMID:        0,
+        SalesOrderM:          null,
+        SalesQuotationMID:    0,
+        SalesQuotationTID:    0,
+        CompanyID:            1,
+        CompanyM:             null,
+        ItemID:               r.itemId ?? 0,
+        ItemM:                null,
+        ItemDescription:      r.description || null,
+        BatchID:              0,
+        ItemBatchM:           null,
+        Quantity:             qty,
+        UnitMultiplier:       1,
+        SalesRate:            fmt3(rate),
+        DiscountPercentage:   discPct,
+        DiscountAmount:       fmt3(discAmt),
+        SalesUnitID:          1,
+        SGSTPer:              taxPct > 0 ? taxPct / 2 : null,
+        CGSTPer:              taxPct > 0 ? taxPct / 2 : null,
+        IGSTPer:              null,
+        UTGSTPer:             null,
+        CESSPer:              cessPct > 0 ? cessPct : null,
+        VATPer:               vatPct > 0 ? vatPct : null,
+        SGSTAmt:              fmt3(sgst),
+        CGSTAmt:              fmt3(cgst),
+        IGSTAmt:              0,
+        UTGSTAmt:             0,
+        CESSAmt:              cessAmt,
+        VATAmt:               vatAmt,
+        TaxID:                null,
+        AccTaxM:              null,
+        TaxPercentage:        taxPct,
+        TaxRate:              fmt3(taxAmt),
+        ServiceTaxID:         null,
+        ServiceTax:           null,
+        ServiceTaxPercentage: null,
+        Amount:               fmt3(gross - discAmt + taxAmt),
+        BranchID:             null,
+        FinYearID:            null,
+        Status:               false,
+        UserID:               0,
+        EntryDate:            "0001-01-01T00:00:00",
+        ModifiedUserID:       null,
+        ModifiedDate:         null,
+        SalesOrderTGuid:      "00000000-0000-0000-0000-000000000000",
+        SoldQuantity:         0,
+        InvoicedQty:          null,
+        SpecID:               null,
+        Specifications:       null,
+        CompanyName:          null,
+        ItemName:             r.item || null,
+        ItemCode:             r.itemCode || null,
+        ItemStoreName:        r.store || null,
+        SizeName:             null,
+        DesignName:           null,
+        DesignCode:           null,
+        ImagePath:            null,
+        SlNo:                 idx + 1,
+        Barcode:              r.barcode || null,
+        StockTypeID:          0,
+        BatchName:            null,
+        SQQty:                parseFloat(r.sqQty) || 0,
+        SOQty:                parseFloat(r.sqQty) || 0,
+        ItemLength:           null,
+        ItemBreadth:          null,
+        ItemSqrMeter:         null,
+        SalesUnit:            null,
+        GrossAmount:          fmt3(gross),
+        CustomerCode:         null,
+        RateBasedOnID:        0,
+        RateOn:               null,
+        SqmQuantity:          null,
+        PileHeight:           null,
+        Spec:                 null,
+        InvDtlCount:          0,
+        InvQty:               0,
+        PackingItemCount:     0,
+        StoreID:              Number(storeId) || 0,
+        SplittedDiscAmt:      0,
+        Label:                `${nowISO} # ${dnNo}`,
+      };
+    });
+
+    // ── Master payload → DeliveryNoteM ────────────────────────────────────────
+    const payload: DeliveryNoteM = {
+      DeliveryNoteID:              0,
+      DeliveryNoteNo:              dnNo,
+      DeliveryNoteDateStr:         dnDate,
+      DeliveryNoteDate:            nowISO,
+      DocumentID:                  defaultDoc?.DocumentID ?? 0,
+      DocumentName:                defaultDoc?.DocumentName ?? null,
+      CustomerID:                  Number(customer),
+      CustomerName:                selectedCustomer?.CustomerName ?? null,
+      StoreID:                     Number(storeId),
+      StoreName:                   selectedStore?.StoreName ?? null,
+      InvoiceTaxTypeID:            Number(taxType),
+      InvoiceTaxType:              selectedTaxType?.InvoiceTaxType ?? null,
+      TaxMasterID:                 defaultDoc?.TaxMasterID ?? 1,
+      IsGST:                       defaultDoc?.IsGST ?? false,
+      SalesmanID:                  Number(salesman) || 0,
+      Salesman:                    selectedSalesman?.Name ?? null,
+      PaymentTypeID:               1,
+      PaymentTypeName:             "Cash",
+      CurrencyID:                  selectedCustomer?.CurrencyID ?? 4,
+      Currency:                    selectedCustomer?.Currency ?? null,
+      DeliveryChallanNo:           challanNo || null,
+      BillingAddress:              billingAddress || null,
+      QtnNos:                      checkedQuotations.map((q) => q.QuotationNo).join(", ") || null,
+      QuotationID:                 checkedQuotations[0]?.SalesQuotationID ?? 0,
+      BillwiseDiscountPer:         parseFloat(billwiseDiscountPct) || 0,
+      BillwiseDiscountAmt:         fmt3(discAmt),
+      BillwiseDiscountAmtBase:     "0.000",
+      GrossAmount:                 fmt3(grossAmt),
+      GrossAmountBase:             "0.000",
+      TotalDiscount:               fmt3(totalDiscount),
+      TotalDiscountBase:           "0.000",
+      TotalTax:                    fmt3(totalTax),
+      TotalTaxBase:                "0.000",
+      TotalSGSTAmt:                totalSGST,
+      TotalCGSTAmt:                totalCGST,
+      TotalIGSTAmt:                0,
+      TotalUTGSTAmt:               0,
+      TotalCESSAmt:                totalCESS,
+      TotalVATAmount:              totalVAT,
+      OtherAdditionalAmount:       "0.000",
+      OtherAdditionalAmountBase:   "0.000",
+      OtherDeductionAmount:        "0.000",
+      OtherDeductionAmountBase:    "0.000",
+      PreNetAmount:                fmt3(preNet),
+      PreNetAmountBase:            "0.000",
+      NetAmount:                   fmt3(netAmt),
+      NetAmountBase:               "0.000",
+      NetTotal:                    fmt3(netAmt),
+      NetTotalBase:                "0.000",
+      TotalQuantity:               fmt3(totalQty),
+      TaxPercHead:                 "Tax %",
+      TaxAmountHead:               "Tax Amt",
+      CategoryID:                  null,
+      CategoryName:                null,
+      SubCategoryID:               null,
+      SubCategoryName:             null,
+      ChequeDate:                  null,
+      DocumentUpload:              null,
+      LstDeliveryNoteDetails:      details,
+      LstDeliveryNoteAdditionalDetails: [],
+    };
+
+    // ── Dispatch ──────────────────────────────────────────────────────────────
+    const result = await dispatch(saveDeliveryNote({ payload }));
+
+    if (saveDeliveryNote.fulfilled.match(result)) {
+      const message = result.payload.Message || "Delivery note saved successfully.";
+      onSaveSuccess?.({
+        dnNo,
+        dnDate,
+        customer: selectedCustomer?.CustomerName ?? "",
+        challanNo: challanNo || "—",
+        store: selectedStore?.StoreName ?? "—",
+        salesman: selectedSalesman?.Name ?? "—",
+        amount: netAmt,
+        message,
+      });
+      onBack?.();
+    } else {
+      const errMsg = typeof result.payload === "string"
+        ? result.payload
+        : "Failed to save delivery note. Please try again.";
+      setToast({ message: errMsg, type: "error" });
+    }
+  }, [
+    customer, taxType, storeId, salesman, lineItems, billingAddress, remarks,
+    billwiseDiscountPct, roundOff, dnNo, dnDate, challanNo,
+    customers, salesmen, stores, defaultStore, allInvoiceTaxTypes,
+    pendingSalesQuotations, defaultDoc, dispatch, onSaveSuccess, onBack,
+  ]);
 
   const handleClear = () => {
     setTaxType("");
     setChallanNo("");
-    setStore(defaultStore?.StoreName ?? "");
+    setStoreId(defaultStore?.StoreID ? String(defaultStore.StoreID) : "");
     setCustomer("");
     setSalesman("");
     setBillingAddress("");
@@ -1825,20 +2231,19 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
                 <div>
                   <FieldLabel icon={Store} label="Store" />
-                  <SelectField
-                    icon={defaultStoreLoading ? <Loader2 size={14} className="animate-spin" /> : <Store size={14} />}
-                    placeholder={defaultStoreLoading ? "Loading…" : "Select Store"}
-                    value={store}
-                    onChange={setStore}
-                    options={
-                      defaultStore
-                        ? [{ label: defaultStore.StoreName, value: defaultStore.StoreName }]
-                        : [
-                          { label: "XXXX", value: "XXXX" },
-                          { label: "Main Store", value: "MAIN" },
-                          { label: "Secondary", value: "SEC" },
-                        ]
-                    }
+                  <SearchableCombobox
+                    value={storeId}
+                    onChange={setStoreId}
+                    loading={storesLoading || defaultStoreLoading}
+                    onOpen={handleStoreOpen}
+                    placeholder="Select Store"
+                    searchPlaceholder="Search store…"
+                    emptyText="No store found."
+                    icon={<Store size={14} />}
+                    options={(stores.length > 0 ? stores : defaultStore ? [{ StoreID: defaultStore.StoreID, StoreName: defaultStore.StoreName, CompanyStore: null }] : []).map((s: StoreOption) => ({
+                      label: s.StoreName,
+                      value: String(s.StoreID),
+                    }))}
                   />
                 </div>
                 <div>
@@ -1895,7 +2300,11 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
             </AccordionTrigger>
             <AccordionContent className="px-6 pb-6 pt-2">
               {/* Pass the numeric customerId so the table knows its context */}
-              <SalesQuotationTable customerId={customer ? Number(customer) : 0} />
+              <SalesQuotationTable
+                customerId={customer ? Number(customer) : 0}
+                taxType={taxType}
+                onCheck={handleQuotationCheck}
+              />
             </AccordionContent>
           </AccordionItem>
 
@@ -1915,7 +2324,10 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
             </AccordionTrigger>
             <AccordionContent className="px-6 pb-6 pt-2">
               {/* Pass the numeric customerId so the table knows its context */}
-              <SalesOrdersTable customerId={customer ? Number(customer) : 0} />
+              <SalesOrdersTable
+                customerId={customer ? Number(customer) : 0}
+                onCheck={handleSalesOrderCheck}
+              />
             </AccordionContent>
           </AccordionItem>
         </Accordion>
@@ -2052,11 +2464,14 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack }) => {
           </button>
           <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90"
+            disabled={saveDeliveryNoteLoading}
+            className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ background: BRAND }}
           >
-            <Save size={15} />
-            Submit Note
+            {saveDeliveryNoteLoading
+              ? <Loader2 size={15} className="animate-spin" />
+              : <Save size={15} />}
+            {saveDeliveryNoteLoading ? "Saving…" : "Submit Note"}
           </button>
         </div>
       </div>
