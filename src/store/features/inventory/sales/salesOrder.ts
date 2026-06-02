@@ -464,7 +464,7 @@ export interface SaveSalesOrderResult {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-interface SalesOrderState {
+export interface SalesOrderState {
     baseCurrency: BaseCurrencyPreference | null;
     baseCurrencyLoading: boolean;
     baseCurrencyError: string | null;

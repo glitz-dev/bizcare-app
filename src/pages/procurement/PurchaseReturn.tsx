@@ -18,7 +18,6 @@ import {
   RotateCcw,
   PackageX,
   CalendarDays,
-  ArrowLeft,
 } from "lucide-react";
 import PurchaseReturnDetails from "@/components/Purchasereturndetails";
 import { fetchPurchaseReturnList } from "../../store/features/inventory/procurement/purchaseReturnSlice";
@@ -113,17 +112,6 @@ export default function PurchaseReturn() {
       fetchPurchaseReturnList({ fromDate: apiDate, toDate: apiDate })
     ).then(() => setSearched(true));
   };
-
-  // Stats derived from rows
-  const stats = useMemo(() => {
-    const total = rows.length;
-    const pending = rows.filter((r) => r.status === "Pending").length;
-    const approved = rows.filter(
-      (r) => r.status === "Approved" || r.status === "Completed"
-    ).length;
-    const totalAmt = rows.reduce((s, r) => s + r.totalAmt, 0);
-    return { total, pending, approved, totalAmt };
-  }, [rows]);
 
   // ─── Columns ──────────────────────────────────────────────────────────────
   const columns: Column<PurchaseReturnRow>[] = useMemo(

@@ -446,9 +446,42 @@ export interface SaveSalesInvoiceResult {
     Id: number;
 }
 
+export interface RetailInvoiceOnlymat {
+    SalesID: number;
+    SalesNo: string;
+    SalesDate: string;
+    CustomerCode: string | null;
+    CustomerName: string;
+    Document: string;
+    NetAmount: number;
+    CreatedBy: string;
+    FaClass: string;
+    Approve: string;
+    ApprovedBY: string;
+    TotalRowCount: number;
+}
+
+export interface FetchRetailInvoiceOnlymatsParams {
+    currentPage?: number;
+    customerId?: number;
+    fromDate?: string;
+    toDate?: string;
+    searchStr?: string;
+    rowsPerPage?: number;
+    companyId?: number;
+    finYearId?: number;
+}
+
+export interface RetailInvoiceOnlymatsResult {
+    data: RetailInvoiceOnlymat[];
+    totalRecords: number;
+    currentPage: number;
+    rowsPerPage: number;
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
-interface SalesInvoiceState {
+export interface SalesInvoiceState {
     defaultStore: DefaultStore | null;
     defaultStoreLoading: boolean;
     defaultStoreError: string | null;
@@ -534,6 +567,13 @@ interface SalesInvoiceState {
     saveSalesInvoiceLoading: boolean;
     saveSalesInvoiceError: string | null;
     saveSalesInvoiceResult: SaveSalesInvoiceResult | null;
+
+    retailInvoiceOnlymats: RetailInvoiceOnlymat[];
+    retailInvoiceOnlymatsTotalRecords: number;
+    retailInvoiceOnlymatsCurrentPage: number;
+    retailInvoiceOnlymatsRowsPerPage: number;
+    retailInvoiceOnlymatsLoading: boolean;
+    retailInvoiceOnlymatsError: string | null;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -624,6 +664,13 @@ const initialState: SalesInvoiceState = {
     saveSalesInvoiceLoading: false,
     saveSalesInvoiceError: null,
     saveSalesInvoiceResult: null,
+
+    retailInvoiceOnlymats: [],
+    retailInvoiceOnlymatsTotalRecords: 0,
+    retailInvoiceOnlymatsCurrentPage: 1,
+    retailInvoiceOnlymatsRowsPerPage: 25,
+    retailInvoiceOnlymatsLoading: false,
+    retailInvoiceOnlymatsError: null,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1614,6 +1661,68 @@ export const saveSalesInvoice = createAsyncThunk<
     }
 );
 
+export const fetchRetailInvoiceOnlymats = createAsyncThunk<
+    RetailInvoiceOnlymatsResult,
+    FetchRetailInvoiceOnlymatsParams | void,
+    { state: RootState; rejectValue: string }
+>(
+    "salesInvoice/fetchRetailInvoiceOnlymats",
+    async (params, { rejectWithValue, getState }) => {
+        const state = getState();
+        const token = getCleanToken(state);
+        if (!token) return rejectWithValue("No authentication token found. Please login again.");
+
+        const companyId = getCompanyId(state, params?.companyId);
+        const finYearId = getFinYearId(state, params?.finYearId);
+
+        const currentPage = params?.currentPage ?? 1;
+        const rowsPerPage = params?.rowsPerPage ?? 25;
+        const customerId = params?.customerId ?? 0;
+        const fromDate = params?.fromDate ?? "";
+        const toDate = params?.toDate ?? "";
+        const searchStr = params?.searchStr ?? "";
+
+        try {
+            const url = new URL(
+                "https://erp.glitzit.com/service/api/RetailInvoiceOnlymat/GetRetailInvoiceOnlymats"
+            );
+            url.searchParams.set("currentPage", String(currentPage));
+            url.searchParams.set("customerId", String(customerId));
+            url.searchParams.set("fromDate", fromDate);
+            url.searchParams.set("rowsPerPage", String(rowsPerPage));
+            url.searchParams.set("searchStr", searchStr);
+            url.searchParams.set("toDate", toDate);
+
+            const response = await fetch(url.toString(), {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token,
+                    "x-company-id": String(companyId),
+                    "x-finyear-id": String(finYearId),
+                },
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const json: ServerResponse<RetailInvoiceOnlymat[]> = await response.json();
+
+            if (!json.Server?.Success) {
+                return rejectWithValue(
+                    json.Server?.Message || "Failed to fetch retail invoices"
+                );
+            }
+
+            const data = json.Server.Data ?? [];
+            const totalRecords = data[0]?.TotalRowCount ?? 0;
+
+            return { data, totalRecords, currentPage, rowsPerPage };
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const salesInvoiceSlice = createSlice({
@@ -1705,8 +1814,22 @@ const salesInvoiceSlice = createSlice({
             state.saveSalesInvoiceError = null;
             state.saveSalesInvoiceResult = null;
         },
+        clearRetailInvoiceOnlymats(state) {
+            state.retailInvoiceOnlymats = [];
+            state.retailInvoiceOnlymatsTotalRecords = 0;
+            state.retailInvoiceOnlymatsCurrentPage = 1;
+            state.retailInvoiceOnlymatsError = null;
+        },
         resetSalesInvoice() {
             return initialState;
+        },
+        resetDeliveryNotes(state) {
+            state.deliveryNotes = [];
+            state.deliveryNotesTotalRecords = 0;
+            state.deliveryNotesCurrentPage = 1;
+        },
+        resetSelectedDNItems(state) {
+            state.selectedDNItems = [];
         },
     },
     extraReducers: (builder) => {
@@ -1994,6 +2117,23 @@ const salesInvoiceSlice = createSlice({
                 state.saveSalesInvoiceLoading = false;
                 state.saveSalesInvoiceError = action.payload ?? "Unknown error";
             })
+
+            // Retail Invoice Onlymats
+            .addCase(fetchRetailInvoiceOnlymats.pending, (state) => {
+                state.retailInvoiceOnlymatsLoading = true;
+                state.retailInvoiceOnlymatsError = null;
+            })
+            .addCase(fetchRetailInvoiceOnlymats.fulfilled, (state, action) => {
+                state.retailInvoiceOnlymatsLoading = false;
+                state.retailInvoiceOnlymats = action.payload.data;
+                state.retailInvoiceOnlymatsTotalRecords = action.payload.totalRecords;
+                state.retailInvoiceOnlymatsCurrentPage = action.payload.currentPage;
+                state.retailInvoiceOnlymatsRowsPerPage = action.payload.rowsPerPage;
+            })
+            .addCase(fetchRetailInvoiceOnlymats.rejected, (state, action) => {
+                state.retailInvoiceOnlymatsLoading = false;
+                state.retailInvoiceOnlymatsError = action.payload ?? "Unknown error";
+            })
     },
 });
 
@@ -2021,6 +2161,9 @@ export const {
     clearProducts,
     clearProductDetails,
     clearSaveSalesInvoice,
+    clearRetailInvoiceOnlymats,
+    resetDeliveryNotes, 
+    resetSelectedDNItems 
 } = salesInvoiceSlice.actions;
 
 export default salesInvoiceSlice.reducer;

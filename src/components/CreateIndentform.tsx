@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/store";
 import {
@@ -50,14 +50,11 @@ import {
     MessageSquare,
     Package,
     Ruler,
-    ClipboardList,
     BarChart3,
     Info,
     Save,
     ChevronsUpDown,
     Check,
-    CalendarDays,
-
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SalesOrderModal } from "@/components/SalesOrderModal";

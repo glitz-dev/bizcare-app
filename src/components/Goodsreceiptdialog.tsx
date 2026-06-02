@@ -14,7 +14,6 @@ import {
     Clock,
     Filter,
     RefreshCw,
-    Plus,
     CheckCircle2,
     CircleDot,
     Layers,

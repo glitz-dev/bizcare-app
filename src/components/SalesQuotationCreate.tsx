@@ -9,13 +9,10 @@ import {
   fetchBatchDetails,
   saveSalesQuotation,
   clearSaveState,
-  type ItemDetail,
-  type BatchDetail,
   type SalesQuotationDetailItem,
 } from "../store/features/inventory/sales/salesQuotationSlice";
 import {
   FileText,
-  Calendar,
   ChevronDown,
   Plus,
   Trash2,
@@ -122,7 +119,6 @@ export default function SalesQuotationCreate({
   // ─── Item / batch dropdown state ────────────────────────────────────────
   const [itemDropdownOpenId, setItemDropdownOpenId] = useState<number | null>(null);
   const [itemSearchStr, setItemSearchStr] = useState("");
-  const [rowBatchDetails, setRowBatchDetails] = useState<Record<number, BatchDetail[]>>({});
   const [selectedInvoiceTaxTypeId, setSelectedInvoiceTaxTypeId] = useState<number | null>(null);
 
   // ─── Header form state ───────────────────────────────────────────────────
@@ -639,7 +635,6 @@ export default function SalesQuotationCreate({
                                     );
                                     if (fetchBatchDetails.fulfilled.match(result) && result.payload.length > 0) {
                                       const batch = result.payload[0];
-                                      setRowBatchDetails((prev) => ({ ...prev, [row.id]: result.payload }));
                                       setLineItems((prev) =>
                                         prev.map((li) => {
                                           if (li.id !== row.id) return li;

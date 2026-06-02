@@ -311,7 +311,7 @@ export interface SaveSalesQuotationParams {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-interface SalesQuotationState {
+export interface SalesQuotationState {
     quotationList: SalesQuotationListItem[];
     quotationListLoading: boolean;
     quotationListError: string | null;

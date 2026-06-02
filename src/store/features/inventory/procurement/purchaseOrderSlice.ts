@@ -731,7 +731,7 @@ export interface FetchSelectedPOParams {
 }
 
 // ─── State ─────────────────────────────────────────────────────────────────────
-interface PurchaseOrderState {
+export interface PurchaseOrderState {
   purchaseOrders: PurchaseOrderRow[];
   items: Item[];
   purchaseOrderDueDays: PurchaseOrderDueDays | null;

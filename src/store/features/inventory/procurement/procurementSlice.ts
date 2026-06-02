@@ -304,11 +304,6 @@ interface fetchDepartmentsParams {
     finYearId?: number;
 }
 
-interface saveIndentParams {
-    companyId?: number;
-    finYearId?: number;
-}
-
 export interface SalesOrder {
     OrderNo: string;
     OrderDate: string;
@@ -324,7 +319,7 @@ export interface SalesOrder {
     SalesOrderDate: string;
 }
 
-interface ProcurementState {
+export interface ProcurementState {
     indentOrders: IndentOrder[];
     items: Item[];
     indentItems: IndentItem[];

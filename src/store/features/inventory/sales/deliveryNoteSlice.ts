@@ -615,7 +615,7 @@ export interface ServerResponse<T> {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-interface DeliveryNoteState {
+export interface DeliveryNoteState {
     invPreference: InvPreference | null;
     invPreferenceLoading: boolean;
     invPreferenceError: string | null;

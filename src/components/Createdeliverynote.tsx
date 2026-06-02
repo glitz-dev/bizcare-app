@@ -47,11 +47,9 @@ import {
   Settings2,
   Barcode,
   Package,
-  AlignLeft,
   Layers,
   DollarSign,
   MapPin,
-  MessageSquare,
   Percent,
   RotateCcw,
   Check,
@@ -63,7 +61,6 @@ import {
   AlertCircle,
   Loader2,
   ChevronsUpDown,
-  Image as ImageIcon,
 } from "lucide-react";
 import {
   Accordion,
@@ -71,7 +68,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -222,54 +218,6 @@ function InputField({
       <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#93b8d8" }}>
         {icon}
       </span>
-    </div>
-  );
-}
-
-function SelectField({
-  icon,
-  placeholder,
-  value,
-  onChange,
-  options = [],
-}: {
-  icon: React.ReactNode;
-  placeholder: string;
-  value?: string;
-  onChange?: (v: string) => void;
-  options?: { label: string; value: string }[];
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value ?? ""}
-        onChange={(e) => onChange?.(e.target.value)}
-        className="w-full appearance-none pl-9 pr-8 py-2.5 text-sm rounded-xl border bg-white transition-all outline-none text-gray-700 font-medium"
-        style={{ borderColor: "#d1dff0", boxShadow: "0 1px 3px rgba(0,70,135,0.05)" }}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = BRAND;
-          e.currentTarget.style.boxShadow = `0 0 0 3px ${BRAND}22`;
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = "#d1dff0";
-          e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,70,135,0.05)";
-        }}
-      >
-        <option value="" disabled style={{ color: "#aab8c8" }}>
-          {placeholder}
-        </option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#93b8d8" }}>
-        {icon}
-      </span>
-      <ChevronDown
-        size={14}
-        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ color: "#93b8d8" }}
-      />
     </div>
   );
 }
@@ -1080,7 +1028,6 @@ function SalesQuotationTable({
   taxType: string;
   onCheck: (quotationId: number, invoiceTaxTypeId: number, checked: boolean) => void;
 }) {
-  const dispatch = useDispatch<AppDispatch>();
   const pendingSalesQuotations = useSelector(
     (state: RootState) => state.deliveryNote?.pendingSalesQuotations ?? EMPTY_ARRAY
   );
@@ -1307,7 +1254,6 @@ function SalesOrdersTable({
   customerId: number;
   onCheck: (salesOrderId: number, checked: boolean) => void;
 }) {
-  const dispatch = useDispatch<AppDispatch>();
   const pendingSalesOrders = useSelector(
     (state: RootState) => state.deliveryNote?.pendingSalesOrders ?? EMPTY_ARRAY
   );
@@ -1527,7 +1473,6 @@ const CreateDeliveryNote: React.FC<CreateDeliveryNoteProps> = ({ onBack, onSaveS
   const storesLoading = useSelector((s: RootState) => s.deliveryNote?.storesLoading ?? false);
 
   // ── Redux: tax types ─────────────────────────────────────────────────────────
-  const invoiceTaxTypeDetails = useSelector((s: RootState) => s.deliveryNote?.invoiceTaxTypeDetails ?? EMPTY_NULL);
   const allInvoiceTaxTypes = useSelector((s: RootState) => s.deliveryNote?.allInvoiceTaxTypes ?? EMPTY_ARRAY);
   const allInvoiceTaxTypesLoading = useSelector((s: RootState) => s.deliveryNote?.allInvoiceTaxTypesLoading ?? false);
 

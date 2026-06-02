@@ -341,7 +341,7 @@ export interface FetchPurchaseListForServiceBillParams {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-interface ServiceBillState {
+export interface ServiceBillState {
     documentList: DocumentStartWith[];
     selectedDocument: DocumentStartWith | null;
     documentLoading: boolean;

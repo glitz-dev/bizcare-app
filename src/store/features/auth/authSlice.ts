@@ -38,7 +38,7 @@ export interface UserData {
   FinYearEnd: string;
 }
 
-interface AuthState {
+export interface AuthState {
   companies: Company[];
   finYears: FinYear[];
   selectedCompany: Company | null;
