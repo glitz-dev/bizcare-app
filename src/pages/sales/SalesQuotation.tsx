@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { type Column } from "react-data-grid";
 import {
@@ -31,15 +31,8 @@ type SalesQuotationRow = {
   amount: number;
 };
 
-type SelectedSQ = SalesQuotationRow;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getTwoYearsAgo(): string {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - 2);
-  return d.toISOString().split("T")[0];
-}
 
 function getToday(): string {
   return new Date().toISOString().split("T")[0];
@@ -71,7 +64,6 @@ const SalesQuotation = () => {
 
   // ─── View state ─────────────────────────────────────────────────────────
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingSQ, setEditingSQ] = useState<SelectedSQ | null>(null);
 
   // ─── Filter state ───────────────────────────────────────────────────────
   const [fromDate, setFromDate] = useState(getToday());
@@ -111,25 +103,11 @@ const SalesQuotation = () => {
       return;
     }
     // TODO: dispatch(fetchSelectedSQ({ id: row.id })) when that thunk exists
-    setEditingSQ(row as SelectedSQ);
     setShowCreateForm(true);
   }, []);
 
   const handleCreateNew = () => {
-    setEditingSQ(null);
     setShowCreateForm(true);
-  };
-
-  const handleFormClose = () => {
-    setShowCreateForm(false);
-    setEditingSQ(null);
-  };
-
-  const handleFormSubmit = (_data: any) => {
-    setEditingSQ(null);
-    setShowCreateForm(false);
-    // Re-fetch so the list reflects the new / updated quotation
-    dispatch(fetchSalesQuotationList({ fromDate, toDate }));
   };
 
   // ─── Columns ────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Barcode, Hash, Search, X, CheckSquare, List } from "lucide-react";
-import { fetchItemDetailsForOpeningStock, fetchProductionItemDetails, fetchSelectedItemForPR } from "@/store/features/inventory/procurement/purchaseOrderSlice";
+import { fetchItemDetailsForOpeningStock, fetchSelectedItemForPR } from "@/store/features/inventory/procurement/purchaseOrderSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 
@@ -14,17 +14,6 @@ interface PORow {
     selected: boolean;
     itemId?: number;
 }
-
-const ITEMS = [
-    "Hex Bolt M10",
-    "Flat Washer M10",
-    "Hex Nut M10",
-    'PVC Pipe 1"',
-    'Ball Valve 1"',
-    "Copper Wire 2.5mm",
-    "MS Plate 6mm",
-    "Allen Key Set",
-];
 
 const defaultRow = (id: number): PORow => ({
     id,
@@ -48,7 +37,6 @@ export default function POIndentTable({ onItemsSelected }: POIndentTableProps) {
     const {
         itemDetailsForOpeningStock,
         invoiceTaxTypes,
-        selectedIndentItems
     } = useSelector((state: RootState) => state.purchaseOrder);
 
     useEffect(() => {

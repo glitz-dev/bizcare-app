@@ -27,6 +27,8 @@ import {
     ProductItem as ProductItemType,
     ProductItemDetails,
     SaveSalesInvoicePayload,
+    resetDeliveryNotes,
+    resetSelectedDNItems,
 } from "@/store/features/inventory/sales/salesInvoiceSlice";
 import {
     Plus,
@@ -228,41 +230,6 @@ function ComboboxWithClear({
                     type="button"
                     onClick={onClear}
                     className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-400 z-10 transition-colors"
-                >
-                    <X size={11} />
-                </button>
-            )}
-        </div>
-    );
-}
-
-// ─── ClearableInput ───────────────────────────────────────────────────────────
-function ClearableInput({
-    value,
-    onChange,
-    placeholder,
-    className,
-    ...rest
-}: Omit<React.ComponentProps<"input">, "onChange"> & { onChange: (v: string) => void }) {
-    return (
-        <div className="relative">
-            <input
-                value={value as string}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={placeholder}
-                className={cn(
-                    "w-full h-9 px-3 text-[13px] text-slate-700 border border-slate-200 rounded-lg bg-white",
-                    "focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400",
-                    "placeholder:text-slate-300 transition-all pr-7",
-                    className
-                )}
-                {...rest}
-            />
-            {value && (
-                <button
-                    type="button"
-                    onClick={() => onChange("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors"
                 >
                     <X size={11} />
                 </button>
@@ -807,7 +774,13 @@ function DeliveryNoteModal({
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface CreateSalesInvoiceProps {
     onClose: () => void;
-    onSuccess?: () => void;
+    onSuccess?: (saved: {
+        invoiceNo: string;
+        invoiceDate: string;
+        customerName: string;
+        netAmount: number;
+        createdBy?: string;
+    }) => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -817,17 +790,13 @@ export function CreateSalesInvoice({ onClose, onSuccess }: CreateSalesInvoicePro
         documentMasters,
         defaultStore,
         documentMastersLoading,
-        defaultStoreLoading,
         invoiceTaxTypes,
-        invoiceTaxTypesLoading,
         paymentTypes,
         paymentTypesLoading,
         gstTypes,
         gstTypesLoading,
         defaultState,
-        defaultStateLoading,
         baseCurrency,
-        baseCurrencyLoading,
         allInvoiceTaxTypes,
         allInvoiceTaxTypesLoading,
         customers,
@@ -1191,13 +1160,32 @@ export function CreateSalesInvoice({ onClose, onSuccess }: CreateSalesInvoicePro
         const result = await dispatch(saveSalesInvoice(payload));
 
         if (saveSalesInvoice.fulfilled.match(result)) {
-            toast.success(result.payload.Message || "Sales invoice saved successfully!");
-            onSuccess?.();
+            toast.success("Sales invoice saved successfully!", {
+
+                style: {
+                    background: "#097969",
+                    color: "white",
+                    border: "1px solid #d97706",
+                },
+
+            });
+            onSuccess?.({
+                invoiceNo: payload.SalesNo,
+                invoiceDate: payload.SalesDate,
+                customerName: payload.CustomerName,
+                netAmount: parseFloat(payload.NetAmount as string) || 0,
+            });
         } else {
             toast.error(
                 typeof result.payload === "string"
                     ? result.payload
-                    : "Failed to save sales invoice."
+                    : "Failed to save sales invoice.", {
+                style: {
+                    background: "#FF4433",
+                    color: "white",
+                    border: "1px solid #d97706",
+                },
+            }
             );
         }
     }, [
@@ -1382,6 +1370,34 @@ export function CreateSalesInvoice({ onClose, onSuccess }: CreateSalesInvoicePro
         { label: "CESS Amt" },
         { label: "" },
     ];
+
+    // ── Reset all local form state on mount ──
+    useEffect(() => {
+        setDocument("");
+        setInvoiceNo("");
+        setInvoiceDate(getToday());
+        setInvoiceTaxType("");
+        setPaymentType("");
+        setStore("");
+        setCustomer("");
+        setCurrency("");
+        setExchangeRate("");
+        setGstType("Inclusive");
+        setState("");
+        setShippingGST("");
+        setShippingPhone("");
+        setBillingGST("");
+        setBillingPhone("");
+        setShippingAddress("");
+        setBillingAddress("");
+        setRemarks("");
+        setDirectPurchase(false);
+        setRegistered(false);
+        setLines([newLineItem(1)]);
+        setShowDNModal(false);
+        dispatch(resetDeliveryNotes());
+        dispatch(resetSelectedDNItems());
+    }, []);
 
     return (
         <div>

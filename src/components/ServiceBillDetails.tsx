@@ -23,7 +23,6 @@ import {
   type SalesForServiceBillItem,
   type SalesPurchaseForServiceBillItem,
   type TaxRate,
-  type AccountHead,
 } from "../store/features/inventory/procurement/serviceBillSlice";
 import {
   Command,
@@ -81,7 +80,7 @@ import {
   CheckSquare,
   CheckCircle2,
 } from "lucide-react";
-import { DataTable, FilterHeader, StatusBadge } from "../common/DataTable";
+import { DataTable, FilterHeader } from "../common/DataTable";
 import type { Column } from "react-data-grid";
 
 
@@ -1043,7 +1042,6 @@ export default function ServiceBillDetail({ onBack }: { onBack?: () => void }) {
   const [gstReverse, setGstReverse] = useState(false);
   const [roundOff, setRoundOff] = useState(false);
   const [salesPurchase, setSalesPurchase] = useState("");
-  const [tdsHead, setTdsHead] = useState("");
   const [tdsHeadOpen, setTdsHeadOpen] = useState(false);
   const [tdsHeadSearch, setTdsHeadSearch] = useState("");
   const [tdsPercent, setTdsPercent] = useState("");
@@ -1153,7 +1151,6 @@ export default function ServiceBillDetail({ onBack }: { onBack?: () => void }) {
     setGstReverse(false);
     setRoundOff(false);
     setSalesPurchase("");
-    setTdsHead("");
     setTdsPercent("");
     setTdsApplicable("");
     setTdsAmount("");

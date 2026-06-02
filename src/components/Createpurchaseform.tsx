@@ -14,7 +14,6 @@ import {
     fetchItemDetails,
     fetchSelectedItemForPR,
     clearSelectedItemForPR,
-    fetchAccountHeadDefault,
     savePurchase,
     type SavePurchasePayload,
     type SavePurchaseLineDetail,
@@ -32,7 +31,6 @@ import {
     Package,
     BarChart2,
     DollarSign,
-    Percent,
     Calculator,
     Plus,
     Trash2,
@@ -192,39 +190,6 @@ function FormInput({
                 className
             )}
         />
-    );
-}
-
-function FormSelect({
-    value,
-    onChange,
-    placeholder,
-    options,
-    disabled,
-}: {
-    value: string;
-    onChange: (v: string) => void;
-    placeholder: string;
-    options: { value: string; label: string }[];
-    disabled?: boolean;
-}) {
-    return (
-        <div className="relative">
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                disabled={disabled}
-                className="w-full h-9 px-3 pr-8 text-[13px] text-slate-700 bg-white border border-slate-200 rounded-lg
-          focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400
-          appearance-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <option value="" disabled>{placeholder}</option>
-                {options.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-            </select>
-            <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        </div>
     );
 }
 
@@ -641,7 +606,6 @@ export default function CreatePurchaseForm({ onClose }: CreatePurchaseFormProps)
         invoiceTaxTypes,
         invoiceTaxTypesLoading,
         defaultStores,
-        defaultStoresLoading,
         suppliers,
         paymentTypes,
         paymentTypesLoading,
@@ -730,7 +694,6 @@ export default function CreatePurchaseForm({ onClose }: CreatePurchaseFormProps)
     const [quickEntryItemCode, setQuickEntryItemCode] = useState("");
     const [quickEntryHsn, setQuickEntryHsn] = useState("");
     const [quickEntryQty, setQuickEntryQty] = useState<number | "">("");
-    const [quickEntryItemOpen, setQuickEntryItemOpen] = useState(false);
     const [quickEntryChecked, setQuickEntryChecked] = useState(false);
 
     // ── Line Items ──
@@ -1324,7 +1287,7 @@ export default function CreatePurchaseForm({ onClose }: CreatePurchaseFormProps)
                         </div>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={() => onClose()}
                         className="flex items-center gap-1.5 text-white/70 hover:text-white text-[11px] font-semibold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
                     >
                         <X size={13} color="#fff" />

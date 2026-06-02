@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/store";
 import {
@@ -10,7 +10,6 @@ import {
   clearItemDetails,
   fetchSelectedIndent,    
   clearSelectedIndent,    
-  type SelectedIndent,    
   type ItemDetail,
 } from "@/store/features/inventory/procurement/procurementSlice";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -156,7 +155,6 @@ export default function PurchaseIndent() {
   const [fromDate, setFromDate] = useState(getOneMonthAgo());
   const [toDate, setToDate] = useState(getToday());
   const [selectedItem, setSelectedItem] = useState<string>("");
-  const [searched, setSearched] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -186,7 +184,6 @@ export default function PurchaseIndent() {
         finYearId: 2,
       })
     );
-    setSearched(true);
   }, [dispatch, fromDate, toDate, selectedItem]);
 
   const handleEditIndent = useCallback((row: any) => {

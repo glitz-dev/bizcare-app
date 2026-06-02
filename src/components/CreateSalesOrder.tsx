@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 import { fetchCustomers, fetchBanks, fetchPaymentTypes, fetchPaymentTerms, fetchPendingSalesQuotations, fetchProductDetails, fetchProductionItemDetail, fetchSalesOrderDocuments, fetchInvoiceTaxTypes, fetchDefaultStore, fetchStoreStartWith, fetchCurrencyList, fetchCustomerCodes, saveSalesOrder, clearSaveSalesOrder } from "../store/features/inventory/sales/salesOrder";
-import type { Bank, PaymentType, PaymentTerm, PendingSalesQuotation, ProductDetail, ProductionItemDetail, SalesOrderDocument, InvoiceTaxType, StoreStartWith, CurrencyStartWith, CustomerCodeItem, SaveSalesOrderPayload, SalesOrderDetailItem } from "../store/features/inventory/sales/salesOrder";
+import type { PendingSalesQuotation, ProductDetail, SalesOrderDocument, InvoiceTaxType, SaveSalesOrderPayload, SalesOrderDetailItem } from "../store/features/inventory/sales/salesOrder";
 import { DataGrid, type Column } from "react-data-grid";
 import "react-data-grid/lib/styles.css";
 import {
@@ -35,7 +35,6 @@ import {
   Tag,
   Plus,
   Trash2,
-  Image as ImageIcon,
   ChevronDown,
   Save,
   RefreshCw,
@@ -49,10 +48,6 @@ import {
   Check,
   ChevronsUpDown,
   Loader2,
-  Search,
-  SlidersHorizontal,
-  CalendarDays,
-  Package,
   X,
   RefreshCcw,
   ClipboardCheck,
@@ -63,7 +58,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { cn } from "@/lib/utils";
 
 // ─── Brand tokens ────────────────────────────────────────────────────────────
 const BRAND = "#004687";
@@ -108,24 +102,6 @@ function Toast({ message, type, onClose }: ToastProps) {
       </button>
     </div>
   );
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface LineItem {
-  id: number;
-  itemCode: string;
-  item: string;
-  sqm: string;
-  quantity: string;
-  unit: string;
-  salesRate: string;
-  grossAmt: string;
-  discPct: string;
-  discount: string;
-  gstPct: string;
-  gstAmt: string;
-  netAmount: string;
-  specification: string;
 }
 
 interface GstBreakdownRow {
@@ -187,24 +163,6 @@ const emptyGstRow = (): GstBreakdownRow => ({
 });
 
 
-const emptyLine = (): LineItem => ({
-  id: Date.now(),
-  itemCode: "",
-  item: "",
-  sqm: "",
-  quantity: "",
-  unit: "",
-  salesRate: "",
-  grossAmt: "",
-  discPct: "",
-  discount: "",
-  gstPct: "",
-  gstAmt: "",
-  netAmount: "",
-  specification: "",
-});
-
-
 // ─── Shared sub-components ───────────────────────────────────────────────────
 function FieldLabel({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
@@ -259,48 +217,6 @@ function InputField({
   );
 }
 
-function SelectField({
-  icon,
-  placeholder,
-  options = [],
-}: {
-  icon: React.ReactNode;
-  placeholder: string;
-  options?: string[];
-}) {
-  return (
-    <div className="relative">
-      <select
-        className="w-full appearance-none pl-9 pr-8 py-2.5 text-sm rounded-xl border bg-white transition-all outline-none text-gray-700 font-medium"
-        style={{ borderColor: "#d1dff0", boxShadow: "0 1px 3px rgba(0,70,135,0.05)" }}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = BRAND;
-          e.currentTarget.style.boxShadow = `0 0 0 3px ${BRAND}22`;
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = "#d1dff0";
-          e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,70,135,0.05)";
-        }}
-        defaultValue=""
-      >
-        <option value="" disabled style={{ color: "#aab8c8" }}>
-          {placeholder}
-        </option>
-        {options.map((o) => (
-          <option key={o}>{o}</option>
-        ))}
-      </select>
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#93b8d8" }}>
-        {icon}
-      </span>
-      <ChevronDown
-        size={14}
-        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ color: "#93b8d8" }}
-      />
-    </div>
-  );
-}
 
 function AccordionLabel({
   icon: Icon,
@@ -328,29 +244,7 @@ function AccordionLabel({
   );
 }
 
-// ─── DataTable status badge ───────────────────────────────────────────────────
-const statusStyles: Record<string, string> = {
-  Pending: "bg-amber-50 text-amber-700 border-amber-200",
-  Approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Rejected: "bg-red-50 text-red-600 border-red-200",
-  Ordered: "bg-blue-50 text-blue-700 border-blue-200",
-  Created: "bg-blue-50 text-blue-700 border-blue-200",
-  Partial: "bg-violet-50 text-violet-700 border-violet-200",
-  Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-};
 
-function StatusBadge({ label }: { label: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border",
-        statusStyles[label] ?? "bg-slate-50 text-slate-600 border-slate-200"
-      )}
-    >
-      {label}
-    </span>
-  );
-}
 
 // ─── FilterHeader (inline from DataTable.tsx) ─────────────────────────────────
 function FilterHeader({
@@ -491,11 +385,9 @@ function QuotationDataTable({
 
 // ─── GST Item Dropdown ────────────────────────────────────────────────────────
 function GstItemDropdown({
-  rowId,
   value,
   onSelect,
 }: {
-  rowId: number;
   value: string;
   onSelect: (item: ProductDetail) => void;
 }) {
@@ -925,7 +817,6 @@ function GstBreakdownTable({
                   <td key={col.key} className="py-1.5 px-2">
                     {col.isItemDropdown ? (
                       <GstItemDropdown
-                        rowId={row.id}
                         value={(row as any)[col.key]}
                         onSelect={(product) => selectItem(row.id, product)}
                       />
@@ -1179,7 +1070,7 @@ function PartyMasterModal({ onClose }: { onClose: () => void }) {
     e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,70,135,0.05)";
   };
 
-  const labelCls = "block text-xs font-semibold mb-1" ;
+  const labelCls = "block text-xs font-semibold mb-1";
 
   return (
     <div
@@ -1389,7 +1280,6 @@ export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesO
   const customerCodesLoading = useSelector((state: RootState) => state.salesOrder?.customerCodesLoading ?? false);
   const saveSalesOrderLoading = useSelector((state: RootState) => state.salesOrder?.saveSalesOrderLoading ?? false);
 
-  const [lines, setLines] = useState<LineItem[]>([emptyLine()]);
   const [gstRows, setGstRows] = useState<GstBreakdownRow[]>([emptyGstRow()]);
   const [remarks, setRemarks] = useState("");
   const [document, setDocument] = useState("");
@@ -1399,7 +1289,6 @@ export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesO
 
   // ── Tracked form state for payload ──────────────────────────────────────────
   const [orderDate, setOrderDate] = useState<string>("2026-05-16");
-  const [deliveryWeek, setDeliveryWeek] = useState<string>("");
   const [custRefDate, setCustRefDate] = useState<string>("");
   const [documentId, setDocumentId] = useState<number>(0);
   const [documentName, setDocumentName] = useState<string>("");
@@ -1477,12 +1366,6 @@ export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesO
   const selectedCurrency = currencyList.find((c) => c.CurrencyID === selectedCurrencyId);
   const selectedCustomerCode = customerCodes.find((c) => c.CustomerID === selectedCustomerCodeId);
 
-  const addLine = () => setLines((prev) => [...prev, emptyLine()]);
-  const removeLine = (id: number) =>
-    setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
-  const updateLine = (id: number, field: keyof LineItem, value: string) =>
-    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
-
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const formatDateStr = (isoDate: string): string => {
     // Convert "YYYY-MM-DD" → "DD-MM-YYYY" as the API expects
@@ -1503,8 +1386,10 @@ export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesO
     const now = new Date().toISOString();
     const saleDateIso = toIso(orderDate);
     const saleDateStr = formatDateStr(orderDate);
-    const deliveryWeekIso = deliveryWeek ? toIso(deliveryWeek) : saleDateIso;
-    const deliveryWeekStr = deliveryWeek ? formatDateStr(deliveryWeek) : saleDateStr;
+
+    const deliveryWeekIso = saleDateIso;
+    const deliveryWeekStr = saleDateStr;
+
     const custRefDateIso = custRefDate ? toIso(custRefDate) : saleDateIso;
     const custRefDateStr = custRefDate ? formatDateStr(custRefDate) : saleDateStr;
 
@@ -1744,89 +1629,89 @@ export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesO
                     <PartyMasterModal onClose={() => setPartyMasterOpen(false)} />
                   )}
                   <div className="flex items-center gap-1.5">
-                  <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
-                    <PopoverTrigger asChild>
-                      <div
-                        role="combobox"
-                        aria-expanded={customerOpen}
-                        tabIndex={0}
-                        onKeyDown={(e) => e.key === "Enter" && setCustomerOpen(true)}
-                        className="flex-1 flex items-center gap-2 pl-9 pr-3 py-2.5 text-sm rounded-xl border bg-white transition-all outline-none text-left font-medium relative cursor-pointer select-none"
-                        style={{
-                          borderColor: customerOpen ? BRAND : "#d1dff0",
-                          boxShadow: customerOpen
-                            ? `0 0 0 3px ${BRAND}22`
-                            : "0 1px 3px rgba(0,70,135,0.05)",
-                          color: selectedCustomer ? "#374151" : "#d1d5db",
-                        }}
+                    <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                      <PopoverTrigger asChild>
+                        <div
+                          role="combobox"
+                          aria-expanded={customerOpen}
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === "Enter" && setCustomerOpen(true)}
+                          className="flex-1 flex items-center gap-2 pl-9 pr-3 py-2.5 text-sm rounded-xl border bg-white transition-all outline-none text-left font-medium relative cursor-pointer select-none"
+                          style={{
+                            borderColor: customerOpen ? BRAND : "#d1dff0",
+                            boxShadow: customerOpen
+                              ? `0 0 0 3px ${BRAND}22`
+                              : "0 1px 3px rgba(0,70,135,0.05)",
+                            color: selectedCustomer ? "#374151" : "#d1d5db",
+                          }}
+                        >
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#93b8d8" }}>
+                            <User size={14} />
+                          </span>
+                          <span className="flex-1 truncate">
+                            {selectedCustomer ? selectedCustomer.CustomerName : "Select Customer"}
+                          </span>
+                          <ChevronsUpDown size={14} className="shrink-0" style={{ color: "#93b8d8" }} />
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="p-0 w-[--radix-popover-trigger-width]"
+                        align="start"
+                        style={{ zIndex: 50 }}
                       >
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#93b8d8" }}>
-                          <User size={14} />
-                        </span>
-                        <span className="flex-1 truncate">
-                          {selectedCustomer ? selectedCustomer.CustomerName : "Select Customer"}
-                        </span>
-                        <ChevronsUpDown size={14} className="shrink-0" style={{ color: "#93b8d8" }} />
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="p-0 w-[--radix-popover-trigger-width]"
-                      align="start"
-                      style={{ zIndex: 50 }}
+                        <Command>
+                          <CommandInput placeholder="Search customer..." className="text-sm" />
+                          <CommandList>
+                            {customersLoading ? (
+                              <div className="py-6 text-center text-sm text-gray-400">Loading...</div>
+                            ) : (
+                              <>
+                                <CommandEmpty>No customer found.</CommandEmpty>
+                                <CommandGroup>
+                                  {customers.map((customer) => (
+                                    <CommandItem
+                                      key={customer.CustomerID}
+                                      value={customer.CustomerName}
+                                      onSelect={() => {
+                                        setSelectedCustomerId(customer.CustomerID);
+                                        setCustomerOpen(false);
+                                      }}
+                                      className="flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Check
+                                        size={14}
+                                        className={selectedCustomerId === customer.CustomerID ? "opacity-100" : "opacity-0"}
+                                        style={{ color: BRAND }}
+                                      />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-medium text-gray-700 truncate">
+                                          {customer.CustomerName}
+                                        </span>
+                                        {customer.CustomerCode && (
+                                          <span className="text-xs text-gray-400">{customer.CustomerCode}</span>
+                                        )}
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {/* Add New Customer button */}
+                    <button
+                      type="button"
+                      title="Add New Customer"
+                      onClick={() => setPartyMasterOpen(true)}
+                      className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border-2 transition-all hover:shadow-md cursor-pointer"
+                      style={{ borderColor: BRAND, color: BRAND, background: "white" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = BRAND_LIGHT)}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
                     >
-                      <Command>
-                        <CommandInput placeholder="Search customer..." className="text-sm" />
-                        <CommandList>
-                          {customersLoading ? (
-                            <div className="py-6 text-center text-sm text-gray-400">Loading...</div>
-                          ) : (
-                            <>
-                              <CommandEmpty>No customer found.</CommandEmpty>
-                              <CommandGroup>
-                                {customers.map((customer) => (
-                                  <CommandItem
-                                    key={customer.CustomerID}
-                                    value={customer.CustomerName}
-                                    onSelect={() => {
-                                      setSelectedCustomerId(customer.CustomerID);
-                                      setCustomerOpen(false);
-                                    }}
-                                    className="flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Check
-                                      size={14}
-                                      className={selectedCustomerId === customer.CustomerID ? "opacity-100" : "opacity-0"}
-                                      style={{ color: BRAND }}
-                                    />
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="text-sm font-medium text-gray-700 truncate">
-                                        {customer.CustomerName}
-                                      </span>
-                                      {customer.CustomerCode && (
-                                        <span className="text-xs text-gray-400">{customer.CustomerCode}</span>
-                                      )}
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </>
-                          )}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {/* Add New Customer button */}
-                  <button
-                    type="button"
-                    title="Add New Customer"
-                    onClick={() => setPartyMasterOpen(true)}
-                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border-2 transition-all hover:shadow-md cursor-pointer"
-                    style={{ borderColor: BRAND, color: BRAND, background: "white" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = BRAND_LIGHT)}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
-                  >
-                    <Plus size={15} strokeWidth={2.5} />
-                  </button>
+                      <Plus size={15} strokeWidth={2.5} />
+                    </button>
                   </div>
                 </div>
                 <div>
@@ -1930,8 +1815,8 @@ export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesO
                           {currencyListLoading
                             ? "Loading..."
                             : selectedCurrency
-                            ? `${selectedCurrency.Currency}${selectedCurrency.CurrencyCode ? ` (${selectedCurrency.CurrencyCode})` : ""}`
-                            : currency || "Select Currency"}
+                              ? `${selectedCurrency.Currency}${selectedCurrency.CurrencyCode ? ` (${selectedCurrency.CurrencyCode})` : ""}`
+                              : currency || "Select Currency"}
                         </span>
                         <ChevronsUpDown size={14} className="shrink-0" style={{ color: "#93b8d8" }} />
                       </div>
@@ -2030,8 +1915,8 @@ export default function CreateSalesOrder({ onBack, onSaveSuccess }: CreateSalesO
                           {customerCodesLoading
                             ? "Loading..."
                             : selectedCustomerCode
-                            ? selectedCustomerCode.CustomerCode ?? selectedCustomerCode.CustomerName
-                            : "Select Customer Code"}
+                              ? selectedCustomerCode.CustomerCode ?? selectedCustomerCode.CustomerName
+                              : "Select Customer Code"}
                         </span>
                         <ChevronsUpDown size={14} className="shrink-0" style={{ color: "#93b8d8" }} />
                       </div>

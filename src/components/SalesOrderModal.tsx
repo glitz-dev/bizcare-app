@@ -6,10 +6,8 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   X,
-  Search,
   ShoppingCart,
   Clock,
   CheckCircle2,

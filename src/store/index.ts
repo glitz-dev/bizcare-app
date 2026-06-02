@@ -9,6 +9,7 @@ import SalesQuotationReducer from './features/inventory/sales/salesQuotationSlic
 import SalesOrderReducer from './features/inventory/sales/salesOrder';
 import DeliveryNoteReducer from './features/inventory/sales/deliveryNoteSlice';
 import SalesInvoiceReducer from './features/inventory/sales/salesInvoiceSlice';
+import SalesReturnReducer from './features/inventory/sales/salesReturnSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     salesOrder: SalesOrderReducer,
     deliveryNote: DeliveryNoteReducer,
     salesInvoice: SalesInvoiceReducer,
+    salesReturn: SalesReturnReducer,
 
   },
 });

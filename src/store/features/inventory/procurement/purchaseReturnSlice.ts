@@ -376,7 +376,7 @@ export interface FetchPurchaseReturnListParams {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-interface PurchaseReturnState {
+export interface PurchaseReturnState {
     documentList: DocumentStartWith[];
     selectedDocument: DocumentStartWith | null;
     documentLoading: boolean;

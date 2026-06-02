@@ -2,33 +2,32 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { type Column } from "react-data-grid";
+import { useDispatch, useSelector } from "react-redux";
+import { type AppDispatch, type RootState } from "@/store"; 
+import { fetchAllSalesReturns } from "../../store/features/inventory/sales/salesReturnSlice"; 
 import { DataTable, ActionsCell, FilterHeader, StatusBadge } from "../../common/DataTable";
 import { PageFilters } from "../../common/PageFilters";
 import { PageHeader } from "../../common/PageHeader";
-import { ReceiptText, User, FileDown } from "lucide-react";
+import { RotateCcw, User, FileDown } from "lucide-react";
+import CreateSalesReturn from "../../components/CreateSalesReturn";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { CreateSalesInvoice } from "../../components/CreateSalesInvoice";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchRetailInvoiceOnlymats,
-  type RetailInvoiceOnlymat,
-} from "../../store/features/inventory/sales/salesInvoiceSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SalesInvoiceRow = {
+type SalesReturnRow = {
   id: number;
   slNo: number;
-  invoiceNo: string;
-  invoiceDate: string;
+  returnNo: string;
+  returnDate: string;
   customer: string;
-  amount: number;
-  createdBy: string;
+  paymentType: string;
+  totalQty: number;
+  totalAmt: number;
   status: string;
   approvedBy: string;
 };
@@ -45,18 +44,16 @@ function getOneMonthAgo(): string {
   return d.toISOString().split("T")[0];
 }
 
-function mapToRow(item: RetailInvoiceOnlymat, index: number): SalesInvoiceRow {
-  return {
-    id: item.SalesID,
-    slNo: index + 1,
-    invoiceNo: item.SalesNo,
-    invoiceDate: item.SalesDate,
-    customer: item.CustomerName,
-    amount: item.NetAmount,
-    createdBy: item.CreatedBy,
-    status: item.Approve,
-    approvedBy: item.ApprovedBY,
-  };
+/**
+ * Converts standard HTML input state strings (YYYY-MM-DD)
+ * to the exact format needed by your backend routing layer (DD-MM-YYYY)
+ */
+function formatDateToApi(dateStr: string): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const [year, month, day] = parts;
+  return `${day}-${month}-${year}`;
 }
 
 // ─── PDF Action Button ────────────────────────────────────────────────────────
@@ -83,63 +80,89 @@ function PdfCell({ row, onPdf }: { row: any; onPdf?: (row: any) => void }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const SalesInvoice = () => {
-  const dispatch = useDispatch<any>();
-  const { retailInvoiceOnlymats, retailInvoiceOnlymatsLoading: loading, retailInvoiceOnlymatsError: error } =
-    useSelector((state: any) => state.salesInvoice);
+const SalesReturn = () => {
+  const dispatch = useDispatch<AppDispatch>();
 
-  // ── View state ───────────────────────────────────────────────────────────
+  // ── Redux State Extraction ──────────────────────────────────────────────────
+  const { salesReturns, salesReturnsLoading, salesReturnsError } = useSelector(
+    (state: RootState) => state.salesReturn
+  );
+
+  // ── View State ──────────────────────────────────────────────────────────────
   const [showCreate, setShowCreate] = useState(false);
-  const [optimisticRows, setOptimisticRows] = useState<SalesInvoiceRow[]>([]);
 
-  // ── Filter state ────────────────────────────────────────────────────────
+  // ── Local Picker States (Kept clean internally in HTML native YYYY-MM-DD) ──
   const [fromDate, setFromDate] = useState<string>(getOneMonthAgo());
   const [toDate, setToDate] = useState<string>(getToday());
   const [selectedItem, setSelectedItem] = useState<string>("");
 
-  // ── Fetch on mount ───────────────────────────────────────────────────────
-  useEffect(() => {
-    dispatch(fetchRetailInvoiceOnlymats({ fromDate, toDate }));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Load Data Core Dispatches ───────────────────────────────────────────────
+  const loadSalesReturns = useCallback(() => {
+    // Transform parameters to DD-MM-YYYY strings layout right before API execution
+    const apiFromDate = formatDateToApi(fromDate);
+    const apiToDate = formatDateToApi(toDate);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  const handleSearch = useCallback(() => {
-    dispatch(fetchRetailInvoiceOnlymats({ fromDate, toDate }));
+    dispatch(
+      fetchAllSalesReturns({
+        fromDate: apiFromDate,
+        toDate: apiToDate,
+        rowsPerPage: 25,
+        currentPage: 1,
+        searchStr: "",
+        documentType: "SALES RETURN",
+      })
+    );
   }, [dispatch, fromDate, toDate]);
 
-  const handleEdit = useCallback((row: SalesInvoiceRow) => {
+  // ── Initial Boot Mount Trigger ──────────────────────────────────────────────
+  useEffect(() => {
+    loadSalesReturns();
+  }, [loadSalesReturns]);
+
+  // ── Search Form Control Interception ─────────────────────────────────────────
+  const handleSearch = useCallback(() => {
+    loadSalesReturns();
+  }, [loadSalesReturns]);
+
+  const handleEdit = useCallback((row: SalesReturnRow) => {
     console.log("Edit", row);
   }, []);
 
-  const handleDelete = useCallback((row: SalesInvoiceRow) => {
+  const handleDelete = useCallback((row: SalesReturnRow) => {
     console.log("Delete", row);
   }, []);
 
-  const handlePdf = useCallback((row: SalesInvoiceRow) => {
+  const handlePdf = useCallback((row: SalesReturnRow) => {
     console.log("PDF", row);
   }, []);
 
-  const handleView = useCallback((row: SalesInvoiceRow) => {
+  const handleView = useCallback((row: SalesReturnRow) => {
     console.log("View", row);
   }, []);
 
-  // ── Derive rows from API data ─────────────────────────────────────────────
-  const rows: SalesInvoiceRow[] = useMemo(() => {
-    const serverRows = (retailInvoiceOnlymats ?? []).map(mapToRow);
-    // Drop any optimistic row whose invoiceNo already appears in the server data
-    const serverNos = new Set(serverRows.map((r: SalesInvoiceRow) => r.invoiceNo));
-    const pending = optimisticRows.filter((r) => !serverNos.has(r.invoiceNo));
-    // Re-number slNo after merging
-    return [...pending, ...serverRows].map((r, i) => ({ ...r, slNo: i + 1 }));
-  }, [retailInvoiceOnlymats, optimisticRows]);
+  // ── Normalization Mapping Layer ──────────────────────────────────────────────
+  const rows: SalesReturnRow[] = useMemo(() => {
+    return salesReturns.map((item, index) => ({
+      id: item.SalesReturnMID ?? index,
+      slNo: item.rowAscNum ?? index + 1,
+      returnNo: item.ReturnNo,
+      returnDate: item.ReturnDate,
+      customer: item.Supplier,
+      paymentType: item.PaymentType,
+      totalQty: item.TotalQuantity,
+      totalAmt: item.NetAmount,
+      status: item.Approve || "Pending",
+      approvedBy: item.ApprovedBy || "",
+    }));
+  }, [salesReturns]);
 
-  // ── Columns ──────────────────────────────────────────────────────────────
-  const columns: Column<SalesInvoiceRow>[] = useMemo(
+  // ── Columns UI Matrix ────────────────────────────────────────────────────────
+  const columns: Column<SalesReturnRow>[] = useMemo(
     () => [
       {
         key: "slNo",
         name: "#",
-        width: 100,
+        width: 70,
         renderHeaderCell: (props: any) => (
           <FilterHeader
             column={props.column}
@@ -154,9 +177,9 @@ const SalesInvoice = () => {
         ),
       },
       {
-        key: "invoiceNo",
-        name: "Invoice No.",
-        width: 130,
+        key: "returnNo",
+        name: "Return No.",
+        width: 140,
         renderHeaderCell: (props: any) => (
           <FilterHeader
             column={props.column}
@@ -166,13 +189,13 @@ const SalesInvoice = () => {
         ),
         renderCell: ({ row }) => (
           <span className="font-mono text-[12px] font-bold text-[#004687]">
-            {row.invoiceNo}
+            {row.returnNo}
           </span>
         ),
       },
       {
-        key: "invoiceDate",
-        name: "Invoice Date",
+        key: "returnDate",
+        name: "Return Date",
         width: 130,
         renderHeaderCell: (props: any) => (
           <FilterHeader
@@ -182,13 +205,13 @@ const SalesInvoice = () => {
           />
         ),
         renderCell: ({ row }) => (
-          <span className="text-[12px] text-slate-500">{row.invoiceDate}</span>
+          <span className="text-[12px] text-slate-500">{row.returnDate}</span>
         ),
       },
       {
         key: "customer",
         name: "Customer",
-        width: 210,
+        width: 200,
         renderHeaderCell: (props: any) => (
           <FilterHeader
             column={props.column}
@@ -208,8 +231,48 @@ const SalesInvoice = () => {
         ),
       },
       {
-        key: "amount",
-        name: "Amount",
+        key: "paymentType",
+        name: "Payment Type",
+        width: 130,
+        renderHeaderCell: (props: any) => (
+          <FilterHeader
+            column={props.column}
+            filterValue={props.filterValue ?? ""}
+            onFilterChange={props.onFilterChange}
+          />
+        ),
+        renderCell: ({ row }) => (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
+              row.paymentType === "Credit"
+                ? "bg-violet-50 text-violet-700 border-violet-200"
+                : "bg-teal-50 text-teal-700 border-teal-200"
+            }`}
+          >
+            {row.paymentType}
+          </span>
+        ),
+      },
+      {
+        key: "totalQty",
+        name: "Total Qty",
+        width: 110,
+        renderHeaderCell: (props: any) => (
+          <FilterHeader
+            column={props.column}
+            filterValue={props.filterValue ?? ""}
+            onFilterChange={props.onFilterChange}
+          />
+        ),
+        renderCell: ({ row }) => (
+          <span className="text-[12px] font-semibold text-slate-700 tabular-nums">
+            {row.totalQty}
+          </span>
+        ),
+      },
+      {
+        key: "totalAmt",
+        name: "Total Amt",
         width: 130,
         renderHeaderCell: (props: any) => (
           <FilterHeader
@@ -220,31 +283,14 @@ const SalesInvoice = () => {
         ),
         renderCell: ({ row }) => (
           <span className="text-[12px] font-semibold text-slate-800 tabular-nums">
-            ₹{row.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </span>
-        ),
-      },
-      {
-        key: "createdBy",
-        name: "Created By",
-        width: 120,
-        renderHeaderCell: (props: any) => (
-          <FilterHeader
-            column={props.column}
-            filterValue={props.filterValue ?? ""}
-            onFilterChange={props.onFilterChange}
-          />
-        ),
-        renderCell: ({ row }) => (
-          <span className="text-[12px] font-medium text-slate-700">
-            {row.createdBy}
+            ₹{row.totalAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </span>
         ),
       },
       {
         key: "status",
         name: "Status",
-        width: 150,
+        width: 130,
         renderHeaderCell: (props: any) => (
           <FilterHeader
             column={props.column}
@@ -274,7 +320,7 @@ const SalesInvoice = () => {
       {
         key: "actions",
         name: "Actions",
-        width: 150,
+        width: 130,
         renderCell: ({ row }) => (
           <div className="flex items-center">
             <ActionsCell
@@ -291,42 +337,18 @@ const SalesInvoice = () => {
     [handleView, handleEdit, handleDelete, handlePdf]
   );
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // ─── Rendering View Context ──────────────────────────────────────────────────
   if (showCreate) {
-    return (
-      <CreateSalesInvoice
-        onClose={() => setShowCreate(false)}
-        onSuccess={(saved) => {
-          // Prepend a synthetic row immediately so the table feels instant
-          setOptimisticRows((prev) => [
-            {
-              id: Date.now(),          // temp id until re-fetch resolves
-              slNo: 1,
-              invoiceNo: saved.invoiceNo,
-              invoiceDate: saved.invoiceDate,
-              customer: saved.customerName,
-              amount: saved.netAmount,
-              createdBy: saved.createdBy ?? "",
-              status: "Pending",
-              approvedBy: "",
-            },
-            ...prev,
-          ]);
-          setShowCreate(false);
-          // Re-fetch in background so real server IDs / status replace optimistic row
-          dispatch(fetchRetailInvoiceOnlymats({ fromDate, toDate }));
-        }}
-      />
-    );
+    return <CreateSalesReturn onBack={() => setShowCreate(false)} />;
   }
 
   return (
     <>
       <PageHeader
-        title="SALES INVOICE"
+        title="SALES RETURN"
         subtitle="Details"
-        icon={<ReceiptText size={16} className="text-white" />}
-        createButtonLabel="CREATE SALES INVOICE"
+        icon={<RotateCcw size={16} className="text-white" />}
+        createButtonLabel="CREATE NEW SALES RETURN"
         onCreateClick={() => setShowCreate(true)}
       />
 
@@ -340,7 +362,7 @@ const SalesInvoice = () => {
           setSelectedItem={setSelectedItem}
           items={[]}
           itemsLoading={false}
-          loading={loading}
+          loading={salesReturnsLoading}
           onSearch={handleSearch}
         />
 
@@ -348,8 +370,8 @@ const SalesInvoice = () => {
           columns={columns}
           rows={rows}
           rowKey="id"
-          loading={loading}
-          error={error}
+          loading={salesReturnsLoading}
+          error={salesReturnsError}
           rowHeight={40}
           headerRowHeight={60}
         />
@@ -358,4 +380,4 @@ const SalesInvoice = () => {
   );
 };
 
-export default SalesInvoice;
+export default SalesReturn;

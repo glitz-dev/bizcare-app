@@ -13,13 +13,11 @@ import {
   fetchAllSuppliers,
   setSelectedDocument,
   setSelectedPaymentType,
-  setSelectedAccHead,
   setSelectedAllAccHead,
   setSelectedInvoiceTaxType,
   setSelectedPurchaseForReturn,
   setSelectedSupplier,
   clearPurchaseForReturnList,
-  clearSupplierList,
   clearSelectedPurchaseDetail,
   resetPurchaseReturn,
   savePurchaseReturn,
@@ -27,7 +25,6 @@ import {
 } from "../store/features/inventory/procurement/purchaseReturnSlice";
 import {
   ArrowLeftRight,
-  ListOrdered,
   Hash,
   CalendarDays,
   Building2,
@@ -53,7 +50,6 @@ import {
   Tag,
   ShieldCheck,
   ArrowLeft,
-  Search,
   Loader2,
   ChevronsUpDown,
   Check,
@@ -88,134 +84,6 @@ interface ReturnLineItem {
   netAmount: number;
   sgst: number;
   cgst: number;
-}
-
-// ─── Searchable Dropdown (Payment Type) ────────────────────────────────────────
-
-interface SearchableDropdownProps {
-  label: string;
-  icon: React.ReactNode;
-  value: string;         // displayed value (the label string)
-  options: { value: string; label: string }[];
-  onSelect: (value: string, label: string) => void;
-  placeholder?: string;
-  loading?: boolean;
-}
-
-function SearchableDropdown({
-  label,
-  icon,
-  value,
-  options,
-  onSelect,
-  placeholder = "Search…",
-  loading = false,
-}: SearchableDropdownProps) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const filtered = options.filter((o) =>
-    o.label.toLowerCase().includes(query.toLowerCase())
-  );
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setQuery("");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const handleOpen = () => {
-    setOpen(true);
-    setQuery("");
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
-
-  return (
-    <div ref={containerRef} className="relative">
-      <label className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-        <span className="text-[#004687] dark:text-blue-400">{icon}</span>
-        {label}
-      </label>
-
-      {/* Trigger */}
-      <button
-        type="button"
-        onClick={handleOpen}
-        disabled={loading}
-        className="w-full h-9 px-3 pr-8 text-[13px] text-left text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg
-          focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400
-          appearance-none transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-      >
-        {loading ? (
-          <span className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
-            <Loader2 size={12} className="animate-spin" /> Loading…
-          </span>
-        ) : (
-          <span className={value ? "text-slate-700 dark:text-slate-200" : "text-slate-300 dark:text-slate-500"}>
-            {value || placeholder}
-          </span>
-        )}
-        <ChevronDown
-          size={13}
-          className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg overflow-hidden">
-          {/* Search input */}
-          <div className="flex items-center gap-2 px-2.5 py-2 border-b border-slate-100 dark:border-slate-700">
-            <Search size={12} className="text-slate-400 dark:text-slate-500 shrink-0" />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search…"
-              className="flex-1 text-[12px] text-slate-700 dark:text-slate-200 bg-transparent outline-none placeholder:text-slate-300 dark:placeholder:text-slate-500"
-            />
-            {query && (
-              <button onClick={() => setQuery("")}>
-                <X size={11} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" />
-              </button>
-            )}
-          </div>
-
-          {/* Options list */}
-          <ul className="max-h-44 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-2.5 text-[12px] text-slate-400 dark:text-slate-500 text-center">No results</li>
-            ) : (
-              filtered.map((o) => (
-                <li
-                  key={o.value}
-                  onClick={() => {
-                    onSelect(o.value, o.label);
-                    setOpen(false);
-                    setQuery("");
-                  }}
-                  className={`px-3 py-2 text-[13px] cursor-pointer transition-colors
-                    ${value === o.label
-                      ? "bg-[#004687]/10 dark:bg-blue-900/30 text-[#004687] dark:text-blue-400 font-semibold"
-                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                    }`}
-                >
-                  {o.label}
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ─── Field Components ──────────────────────────────────────────────────────────
@@ -363,7 +231,6 @@ export default function PurchaseReturnDetails({
     defaultStore,
     storeLoading,
 
-    accHeadList,
     selectedAccHead,
     accHeadLoading,
 
@@ -373,12 +240,10 @@ export default function PurchaseReturnDetails({
 
     invoiceTaxTypeList,
     selectedInvoiceTaxType,
-    invoiceTaxTypeLoading,
 
     purchaseForReturnList,
     selectedPurchaseForReturn,
     purchaseForReturnLoading,
-    purchaseForReturnError,
 
     supplierList,
     selectedSupplier,
@@ -386,7 +251,6 @@ export default function PurchaseReturnDetails({
 
     selectedPurchaseDetail,
     selectedPurchaseDetailLoading,
-    selectedPurchaseDetailError,
 
     saveLoading,
     saveError,
@@ -481,26 +345,11 @@ export default function PurchaseReturnDetails({
 
   const returnDate = getTodayFormatted();
 
-  const paymentTypeOptions = paymentTypeList.map((p: any) => ({
-    value: String(p.PaymentTypeID),
-    label: p.PaymentTypeName,
-  }));
-
   const storeValue = defaultStore?.StoreName ?? "";
-
-  const accHeadOptions = accHeadList.map((a: any) => ({
-    value: String(a.HeadID),
-    label: a.HeadName,
-  }));
 
   const allAccHeadOptions = allAccHeadList.map((a: any) => ({
     value: String(a.HeadID),
     label: a.HeadName,
-  }));
-
-  const taxTypeOptions = invoiceTaxTypeList.map((t: any) => ({
-    value: String(t.InvoiceTaxTypeID),
-    label: t.InvoiceTaxType,
   }));
 
   // ── Local header fields ──

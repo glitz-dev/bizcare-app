@@ -16,12 +16,12 @@ import { cn } from "@/lib/utils";
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 const statusStyles: Record<string, string> = {
-  Pending:   "bg-amber-50 text-amber-700 border-amber-200",
-  Approved:  "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Rejected:  "bg-red-50 text-red-600 border-red-200",
-  Ordered:   "bg-blue-50 text-blue-700 border-blue-200",
-  Created:   "bg-blue-50 text-blue-700 border-blue-200",
-  Partial:   "bg-violet-50 text-violet-700 border-violet-200",
+  Pending: "bg-amber-50 text-amber-700 border-amber-200",
+  Approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Rejected: "bg-red-50 text-red-600 border-red-200",
+  Ordered: "bg-blue-50 text-blue-700 border-blue-200",
+  Created: "bg-blue-50 text-blue-700 border-blue-200",
+  Partial: "bg-violet-50 text-violet-700 border-violet-200",
   Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
@@ -187,9 +187,10 @@ export function DataTable({
 
   // Memoized rowClass for performance + !important to beat react-data-grid styles
   const getRowClass = useMemo(() => {
-    return (row: any, rowIndex: number) => (rowIndex % 2 === 1 ? "!bg-blue-50" : "");
+    return (_row: any, rowIndex: number) =>
+      rowIndex % 2 === 1 ? "!bg-blue-50" : "";
   }, []);
-
+  
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm min-h-[400px] flex items-center justify-center">

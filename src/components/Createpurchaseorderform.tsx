@@ -46,11 +46,8 @@ import {
     SelectedIndentItem,
     SelectedIndentForPR,
     fetchItemDetailsForOpeningStock,
-    clearSelectedItemForPR,
-    SelectedItemForPR,
     savePurchaseOrder,
     updatePurchaseOrder,
-    fetchSelectedPO,
     clearSelectedPO,
     fetchItemUnits,
     type ItemUnit,
@@ -491,9 +488,6 @@ export default function CreatePurchaseOrderForm({
         remainingIndentsError,
         selectedIndentItemsLoading,
         selectedIndentItemsError,
-        selectedItemForPR,
-        selectedIndentForPR,
-        selectedItemForPRLoading,
         itemUnits,
     } = useSelector((state: RootState) => state.purchaseOrder);
 
@@ -504,7 +498,7 @@ export default function CreatePurchaseOrderForm({
     const isEditMode = !!editData;
 
     // General fields
-    const [orderNo, setOrderNo] = useState(editData?.OrderNo ?? "LPO-64");
+    const [orderNo, _setOrderNo] = useState(editData?.OrderNo ?? "LPO-64");
 
     const [orderDate] = useState(() =>
         editData?.OrderDate
@@ -667,10 +661,6 @@ export default function CreatePurchaseOrderForm({
                 purchaseOrderID: remainingIndentsId,
             })
         );
-    };
-
-    const handleSelectIndentItem = (row: RemainingIndent) => {
-        toast.success(`Indent ${row.IndentNo} added to PO`);
     };
 
 
