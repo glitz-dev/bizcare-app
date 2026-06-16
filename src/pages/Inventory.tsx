@@ -7,6 +7,8 @@ import {
   Receipt, Package, Boxes, ArrowRightLeft, Truck,
   FileText, Factory, Wrench, LayoutGrid, ChevronDown,
   CirclePercent, WalletCards, ReceiptCent, Barcode,
+  GitPullRequest,
+  Signature,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -64,8 +66,8 @@ const sections: Section[] = [
       { label: "Sales Invoice",   icon: <FileText size={20} />, href: "/inventory/sales-invoice" },
       { label: "Sales Return",    icon: <RefreshCw size={20} />, href: "/inventory/sales-return" },
       { label: "Delivery Note",   icon: <Truck size={20} />, href: "/inventory/delivery-note" },
-      { label: "Retail Invoice",  icon: <WalletCards size={20} />, href: "/inventory/retailinvoicedetail" },
-      { label: "Service Bill",    icon: <ReceiptCent size={20} />, href: "/inventory/sales-service-bill" },
+      { label: "Retail Invoice",  icon: <WalletCards size={20} />, href: "/inventory/retail-invoice" },
+      { label: "Service Bill",    icon: <ReceiptCent size={20} />, href: "/inventory/sales/service-bill" },
     ],
   },
   {
@@ -81,8 +83,10 @@ const sections: Section[] = [
     subSectionLabelColor: "text-violet-700 dark:text-violet-400",
     subSectionDivider: "border-violet-100 dark:border-violet-900",
     items: [
-      { label: "Opening Stock",  icon: <Package size={20} /> },
-      { label: "Physical Stock", icon: <Boxes size={20} /> },
+      { label: "Opening Stock",  icon: <Package size={20} />,  href: "/inventory/stock-management/opening-stock" },
+      { label: "Physical Stock", icon: <Boxes size={20} />, href: "/inventory/stock-management/physical-stock" },
+      { label: "Item Transfer Request", icon: <GitPullRequest size={20} />, href: "/inventory/stock-management/item-transfer-request" },
+      { label: "Item Transfer Approval", icon: <Signature size={20} />, href: "/inventory/stock-management/item-transfer-approval" },
       { label: "Damage Stock",   icon: <ArrowRightLeft size={20} /> },
       { label: "Material Issue", icon: <Wrench size={20} /> },
       { label: "Material Receive", icon: <Package size={20} /> },
