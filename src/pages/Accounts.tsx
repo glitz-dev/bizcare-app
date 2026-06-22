@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FileText, RefreshCw, BarChart2, Receipt, ChevronDown, CreditCard,
   Landmark, BookOpen, HandCoins, Scale, ScrollText, ClipboardCheck,
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-interface MenuItem { label: string; icon: React.ReactNode; active?: boolean; badge?: string; }
+interface MenuItem { label: string; icon: React.ReactNode; active?: boolean; badge?: string; href?: string; }
 interface SubSection { label: string; items: MenuItem[]; }
 interface Section {
   id: string; title: string; description: string; 
@@ -39,8 +40,8 @@ const sections: Section[] = [
       {
         label: "General",
         items: [
-          { label: "Journal Voucher", icon: <ScrollText size={20} /> },
-          { label: "Contra Voucher", icon: <RefreshCw size={20} /> },
+          { label: "Journal Voucher", icon: <ScrollText size={20} />, href:"/Accounts/accounts/journal-voucher" },
+          { label: "Contra Voucher", icon: <RefreshCw size={20} />, href:"/Accounts/accounts/contra-entry" },
           { label: "Payment", icon: <Wallet size={20} /> },
           { label: "Receipt", icon: <Receipt size={20} /> },
           { label: "Chart Of Accounts", icon: <BarChart2 size={20} /> },
@@ -134,14 +135,18 @@ const sections: Section[] = [
 // ─── Refined Tile Grid ────────────────────────────────────────────────────────
 
 function TileGrid({ items, activeTile, hoverTile }: { items: MenuItem[]; activeTile: string; hoverTile: string; }) {
+  const navigate = useNavigate();
+
   return (
     <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
       {items.map((item) => (
         <button
           key={item.label}
+          onClick={() => item.href && navigate(item.href)}
           className={cn(
             "group relative flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl",
-            "border transition-all duration-300 min-w-0 cursor-pointer",
+            "border transition-all duration-300 min-w-0",
+            item.href ? "cursor-pointer" : "cursor-default",
             item.active
               ? activeTile
               : cn(

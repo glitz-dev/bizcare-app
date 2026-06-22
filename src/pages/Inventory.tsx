@@ -88,9 +88,9 @@ const sections: Section[] = [
       { label: "Item Transfer Request", icon: <GitPullRequest size={20} />, href: "/inventory/stock-management/item-transfer-request" },
       { label: "Item Transfer Approval", icon: <Signature size={20} />, href: "/inventory/stock-management/item-transfer-approval" },
       { label: "Damage Stock",   icon: <ArrowRightLeft size={20} /> },
-      { label: "Material Issue", icon: <Wrench size={20} /> },
-      { label: "Material Receive", icon: <Package size={20} /> },
-      { label: "Barcode Print",  icon: <Barcode size={20} /> },
+      { label: "Material Issue", icon: <Wrench size={20} />, href: "/inventory/stock-management/material-issue-detail" },
+      { label: "Material Receive", icon: <Package size={20} />, href: "/inventory/stock-management/material-receive" },
+      { label: "Barcode Print",  icon: <Barcode size={20} />, href: "/inventory/stock-management/barcode-print" },
     ],
   },
   {
