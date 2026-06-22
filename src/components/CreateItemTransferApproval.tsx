@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
     FileText, Hash, Calendar, Tag, Store, GitBranch,
     StickyNote, Layers, Boxes, RefreshCw, Save, Trash2,
@@ -14,6 +15,9 @@ import {
     fetchStoreStartWith,
     fetchTransferRequestStartWith,
     fetchSelectedTransferRequest,
+    saveChanges,
+    resetSaveChangesState,
+    type ItemRequestToApprove,
 } from "../store/features/inventory/stockManagement/itemTransferApprovalSlice";
 import {
     Popover,
@@ -305,7 +309,7 @@ function ItemsTable({
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
+const CreateItemTransferApproval: React.FC<{ onBack?: () => void; editRow?: ItemRequestToApprove }> = ({ onBack, editRow }) => {
     const dispatch = useDispatch<AppDispatch>();
     const {
         documentMasters,
@@ -313,6 +317,9 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack 
         storesStartWith,
         transferRequestsStartWith,
         selectedTransferRequests,
+        saveChangesLoading,
+        saveChangesSuccess,
+        saveChangesError,
     } = useSelector((s: RootState) => s.itemTransferApproval);
     const companyId = useSelector((s: RootState) => (s.auth.userData as any)?.companyId ?? 1);
 
@@ -331,7 +338,11 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack 
     const defaultStoreId = useRef<number | null>(null);
 
     // ── Mount: fetch document masters + default store + transfer requests ─────
+    // In edit mode the parent already dispatched all 3 APIs before navigating here,
+    // so we skip the fetches and let the prefill effect below handle the fields.
     useEffect(() => {
+        if (editRow) return; // data already in Redux — prefill effect handles it
+
         dispatch(fetchDocumentMasters()).then((action) => {
             if (fetchDocumentMasters.fulfilled.match(action)) {
                 const doc = action.payload[0];
@@ -356,6 +367,57 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack 
         dispatch(fetchTransferRequestStartWith({ branchId: companyId }));
     }, [dispatch]);
 
+    // ── Edit prefill: runs once when editRow is present and Redux data has landed ──
+    useEffect(() => {
+        if (!editRow) return;
+        if (!documentMasters.length || !defaultStores.length || !selectedTransferRequests.length) return;
+
+        // Document
+        const doc = documentMasters[0];
+        setDocument_(doc.DocumentName);
+        setRefNo(`${doc.Prefix}${doc.StartingNo}`);
+
+        // Store
+        const store = defaultStores[0];
+        defaultStoreId.current = store.StoreID;
+        setReqFromStore(store.StoreID);
+        dispatch(fetchStoreStartWith());
+
+        // Transfer requests dropdown
+        dispatch(fetchTransferRequestStartWith({ branchId: companyId }));
+
+        // Requested No — use the MId from the table row
+        setRequestedNo(String(editRow.ItemTransferRequestMId));
+
+        // Prefill fields from the first SelectedTransferRequest record
+        const master = selectedTransferRequests[0];
+        setRequestedToStore(String(master.RequestToStoreID));
+        setRequestedBranch(String(master.RequestToBranchID));
+
+        // Transfer type
+        const isInternal = editRow.TransferType?.toLowerCase().includes("internal");
+        setTransferType(isInternal ? "internal" : "external");
+
+        // Deduplicate and build rows
+        const seen = new Set<number>();
+        const uniqueItems = selectedTransferRequests.filter((item) => {
+            if (seen.has(item.ItemTransferRequestTId)) return false;
+            seen.add(item.ItemTransferRequestTId);
+            return true;
+        });
+
+        setRows(
+            uniqueItems.map((item, idx) => ({
+                id: idx + 1,
+                barcode: item.Barcode,
+                itemCode: item.Itemcode,
+                item: item.ItemName,
+                reqQty: String(item.Quantity),
+                aprQty: "",
+            }))
+        );
+    }, [editRow, documentMasters, defaultStores, selectedTransferRequests]);
+
     // ── Handler: select a Transfer Request No. → fetch detail + prefill ──────
     const handleRequestedNoChange = (value: string) => {
         setRequestedNo(value);
@@ -376,8 +438,16 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack 
                 setRequestedToStore(String(master.RequestToStoreID));
                 setRequestedBranch(String(master.RequestToBranchID));
 
+                // Deduplicate by ItemTransferRequestTId to prevent duplicate rows
+                const seen = new Set<number>();
+                const uniqueItems = data.filter((item) => {
+                    if (seen.has(item.ItemTransferRequestTId)) return false;
+                    seen.add(item.ItemTransferRequestTId);
+                    return true;
+                });
+
                 setRows(
-                    data.map((item, idx) => ({
+                    uniqueItems.map((item, idx) => ({
                         id: idx + 1,
                         barcode: item.Barcode,
                         itemCode: item.Itemcode,
@@ -406,6 +476,111 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack 
     // Keep fields evaluating to an empty string on layout mount so placeholders display correctly
     const requestedToStoreLabel = requestedNo ? (selectedTransferRequests[0]?.RequestToStore ?? "") : "";
     const requestedBranchLabel = requestedNo ? (selectedTransferRequests[0]?.ReqToBranch ?? "") : "";
+
+    // ── Toast feedback on save state changes ──────────────────────────────────
+    useEffect(() => {
+        if (saveChangesSuccess) {
+            toast.success("Transfer approval saved successfully.", {
+                style: {
+                    background: "#097969",
+                    color: "white",
+                    border: "1px solid #d97706",
+                }
+            });
+            dispatch(resetSaveChangesState());
+        }
+    }, [saveChangesSuccess]);
+
+    useEffect(() => {
+        if (saveChangesError) {
+            toast.error(saveChangesError,  {
+                style: {
+                    background: "#FF4433",
+                    color: "white",
+                    border: "1px solid #d97706",
+                },
+            });
+            dispatch(resetSaveChangesState());
+        }
+    }, [saveChangesError]);
+
+    // ── Submit handler ────────────────────────────────────────────────────────
+    const handleSubmit = () => {
+        const master = selectedTransferRequests[0];
+        const now = new Date();
+        const transferDateISO = now.toISOString(); // "2026-06-17T22:50:06.802Z"
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const yyyy = now.getFullYear();
+        const transferDateStr = `${mm}/${dd}/${yyyy}`;
+
+        const selectedDoc = documentMasters[0];
+
+        const itemTransferApprovalT = rows
+            .filter((r) => r.aprQty !== "")
+            .map((row) => {
+                // Find the matching SelectedTransferRequest line by itemCode/barcode
+                const matchedLine = selectedTransferRequests.find(
+                    (sr) => sr.Barcode === row.barcode && sr.Itemcode === row.itemCode
+                ) ?? selectedTransferRequests[0];
+
+                return {
+                    ItemID: matchedLine?.ItemID ?? 0,
+                    BatchID: matchedLine?.BatchID ?? 0,
+                    Barcode: row.barcode,
+                    ItemCode: row.itemCode,
+                    ItemName: row.item,
+                    Quantity: parseFloat(row.reqQty) || 0,
+                    ApprovedQuantity: parseFloat(row.aprQty) || 0,
+                    ItemTransferRequestMId: matchedLine?.ItemTransferRequestMId ?? 0,
+                    ItemTransferRequestTId: matchedLine?.ItemTransferRequestTId ?? 0,
+                    Status: true,
+                    StockTypeID: matchedLine?.StockTypeID ?? 0,
+                    UnitId: matchedLine?.UnitId ?? 0,
+                    UnitMultiplier: matchedLine?.UnitMultiplier ?? 1,
+                };
+            });
+
+        const payload = {
+            BranchName: master?.ReqFromBranch ?? "",
+            DocumentID: selectedDoc?.DocumentID ?? 0,
+            DocumentName: selectedDoc?.DocumentName ?? document_,
+            IsInternalTransfer: transferType === "internal",
+            ItemTransferApprovalT: itemTransferApprovalT,
+            ItemTransferRefNo: refNo,
+            ItemTransferRequestMId: master?.ItemTransferRequestMId ?? Number(requestedNo),
+            ItemTransferRequestRefNo: master?.ItemTransferRequestRefNo ?? "",
+            RequestFromBranchID: master?.RequestFromBranchID ?? companyId,
+            RequestFromStoreID: master?.RequestFromStoreID ?? (reqFromStore as number),
+            RequestToBranchID: master?.RequestToBranchID ?? 0,
+            RequestToStoreID: master?.RequestToStoreID ?? 0,
+            StcokStoreID: reqFromStore as number,
+            StockBranchID: companyId,
+            StoreName: storesStartWith.find((s) => s.StoreID === reqFromStore)?.StoreName ?? "",
+            TotalQuantity: netQuantity,
+            TransferDate: transferDateISO,
+            TransferDateStr: transferDateStr,
+            TransferType: transferType === "internal",
+            branchStoreName: master?.ReqFromBranch ?? "",
+        };
+
+        dispatch(saveChanges(payload));
+    };
+
+    // ── Clear handler ─────────────────────────────────────────────────────────
+    const handleClear = () => {
+        setDocument_("");
+        setRefNo("");
+        setApprovalDate(new Date().toISOString().split("T")[0]);
+        setTransferType("internal");
+        setReqFromStore("");
+        setRequestedNo("");
+        setRequestedToStore("");
+        setRequestedBranch("");
+        setRows([makeEmptyRow(1)]);
+        setRemarks("");
+        dispatch(resetSaveChangesState());
+    };
 
     return (
         <div className="flex flex-col h-full bg-slate-50">
@@ -592,6 +767,7 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack 
                 {/* ── Action Buttons ──────────────────────────────────────────────── */}
                 <div className="flex justify-end gap-3 pb-8">
                     <button
+                        onClick={handleClear}
                         className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all hover:shadow-md"
                         style={{ borderColor: BRAND, color: BRAND, background: "white" }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = BRAND_LIGHT; }}
@@ -601,11 +777,13 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void }> = ({ onBack 
                         Clear
                     </button>
                     <button
-                        className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90"
+                        onClick={handleSubmit}
+                        disabled={saveChangesLoading}
+                        className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                         style={{ background: BRAND }}
                     >
                         <Save size={15} />
-                        Submit
+                        {saveChangesLoading ? "Saving…" : "Submit"}
                     </button>
                 </div>
 

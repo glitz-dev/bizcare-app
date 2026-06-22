@@ -23,6 +23,11 @@ import OpeningStock from './pages/stock management/OpeningStock'
 import PhysicalStock from './pages/stock management/Physicalstock'
 import ItemTransferRequest from './pages/stock management/ItemTransferRequest'
 import ItemTransferApproval from './pages/stock management/ItemTransferApproval'
+import MaterialIssueDetail from './pages/stock management/MaterialIssueDetail'
+import MaterialReceive from './pages/stock management/MaterialReceive'
+import BarcodePrint from './pages/stock management/BarcodePrint'
+import JournalVoucher from './pages/Accounts/Accounts-sub/General/JournalVoucher'
+import ContraEntry from './pages/Accounts/Accounts-sub/General/ContraDetails'
 
 const App = () => {
   return (
@@ -54,7 +59,11 @@ const App = () => {
           <Route path="/inventory/stock-management/physical-stock" element={<PhysicalStock />} />
           <Route path="/inventory/stock-management/item-transfer-request" element={<ItemTransferRequest />} />
           <Route path="/inventory/stock-management/item-transfer-approval" element={<ItemTransferApproval />} />
-
+          <Route path="/inventory/stock-management/material-issue-detail" element={<MaterialIssueDetail />} />
+          <Route path="/inventory/stock-management/material-receive" element={<MaterialReceive />} />
+          <Route path="/inventory/stock-management/barcode-print" element={<BarcodePrint />} />
+          <Route path="/Accounts/accounts/journal-voucher" element={<JournalVoucher />} />
+          <Route path="/Accounts/accounts/contra-entry" element={<ContraEntry />} />  
         </Route>
         
         {/* 404 Route */}

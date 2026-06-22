@@ -7,7 +7,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/store";
 import {
   fetchDefaultStore,
+  fetchDocumentMasters,
   fetchAllItemRequestsToApprove,
+  fetchSelectedTransferRequest,
   type ItemRequestToApprove,
 } from "../../store/features/inventory/stockManagement/itemTransferApprovalSlice";
 
@@ -39,6 +41,8 @@ export default function ItemTransferApproval() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [selectedStore, setSelectedStore] = useState("");
+  const [editRow, setEditRow] = useState<ItemRequestToApprove | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
 
   // On mount: fetch the default store, then use its StoreID to load the table
   useEffect(() => {
@@ -52,6 +56,19 @@ export default function ItemTransferApproval() {
       }
     });
   }, [dispatch]);
+
+  // Fire all 3 APIs in parallel, then open the form with the selected row
+  const handleEdit = async (row: ItemRequestToApprove) => {
+    setEditLoading(true);
+    await Promise.all([
+      dispatch(fetchDocumentMasters()),
+      dispatch(fetchDefaultStore()),
+      dispatch(fetchSelectedTransferRequest({ transferRequestId: row.ItemTransferRequestMId })),
+    ]);
+    setEditRow(row);
+    setEditLoading(false);
+    setShowCreate(true);
+  };
 
   // Re-fetch when the user picks a different store and hits Search
   const handleSearch = () => {};
@@ -95,7 +112,7 @@ export default function ItemTransferApproval() {
       renderCell: ({ row }) => (
         <ActionsCell
           row={row}
-          onEdit={() => {}}
+          onEdit={() => handleEdit(row)}
           onDelete={() => {}}
         />
       ),
@@ -103,7 +120,23 @@ export default function ItemTransferApproval() {
   ], []);
 
   if (showCreate) {
-    return <CreateItemTransferApproval onBack={() => setShowCreate(false)} />;
+    return (
+      <CreateItemTransferApproval
+        onBack={() => { setShowCreate(false); setEditRow(null); }}
+        editRow={editRow ?? undefined}
+      />
+    );
+  }
+
+  if (editLoading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-4 border-[#004687]/20 border-t-[#004687] animate-spin" />
+          <span className="text-sm font-semibold text-[#004687]">Loading approval…</span>
+        </div>
+      </div>
+    );
   }
 
   return (

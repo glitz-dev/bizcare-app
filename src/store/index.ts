@@ -15,6 +15,9 @@ import SalesServiceBillReducer from './features/inventory/sales/salesServiceBill
 import PhysicalStockReducer from './features/inventory/stockManagement/physicalStockSlice';
 import ItemTransferRequestReducer from './features/inventory/stockManagement/itemTransferRequestSlice';
 import itemTransferApprovalReducer from './features/inventory/stockManagement/itemTransferApprovalSlice';
+import materialIssueDetailReducer from './features/inventory/stockManagement/materialIssueDetailSlice';
+import journalVoucherReducer from './features/Accounts/accounts/journalVoucherSlice';
+import contraEntryReducer from './features/Accounts/accounts/contraEntrySlice';
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +37,9 @@ export const store = configureStore({
     physicalStock: PhysicalStockReducer,
     itemTransferRequest: ItemTransferRequestReducer,
     itemTransferApproval: itemTransferApprovalReducer,
+    materialIssueDetail: materialIssueDetailReducer,
+    journalVoucher: journalVoucherReducer,
+    contraEntry: contraEntryReducer,
 
   },
 });
