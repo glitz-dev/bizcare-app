@@ -10,6 +10,11 @@ import SalesOrderReducer from './features/inventory/sales/salesOrder';
 import DeliveryNoteReducer from './features/inventory/sales/deliveryNoteSlice';
 import SalesInvoiceReducer from './features/inventory/sales/salesInvoiceSlice';
 import SalesReturnReducer from './features/inventory/sales/salesReturnSlice';
+import RetailInvoiceReducer from './features/inventory/sales/retailInvoiceSlice';
+import SalesServiceBillReducer from './features/inventory/sales/salesServiceBillSlice';
+import PhysicalStockReducer from './features/inventory/stockManagement/physicalStockSlice';
+import ItemTransferRequestReducer from './features/inventory/stockManagement/itemTransferRequestSlice';
+import itemTransferApprovalReducer from './features/inventory/stockManagement/itemTransferApprovalSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +29,11 @@ export const store = configureStore({
     deliveryNote: DeliveryNoteReducer,
     salesInvoice: SalesInvoiceReducer,
     salesReturn: SalesReturnReducer,
+    retailInvoice: RetailInvoiceReducer,
+    salesServiceBill: SalesServiceBillReducer,
+    physicalStock: PhysicalStockReducer,
+    itemTransferRequest: ItemTransferRequestReducer,
+    itemTransferApproval: itemTransferApprovalReducer,
 
   },
 });

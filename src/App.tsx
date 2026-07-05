@@ -17,6 +17,12 @@ import SalesOrder from './pages/sales/SalesOrder'
 import DeliveryNote from './pages/sales/DeliveryNote'
 import SalesInvoice from './pages/sales/SalesInvoice'
 import SalesReturn from './pages/sales/SalesReturn'
+import RetailInvoice from './pages/sales/RetailInvoice'
+import SalesServiceBill from './pages/sales/SalesServiceBill';
+import OpeningStock from './pages/stock management/OpeningStock'
+import PhysicalStock from './pages/stock management/Physicalstock'
+import ItemTransferRequest from './pages/stock management/ItemTransferRequest'
+import ItemTransferApproval from './pages/stock management/ItemTransferApproval'
 
 const App = () => {
   return (
@@ -42,6 +48,12 @@ const App = () => {
           <Route path="/inventory/delivery-note" element={<DeliveryNote />} />
           <Route path="/inventory/sales-invoice" element={<SalesInvoice />} />
           <Route path="/inventory/sales-return" element={<SalesReturn />} />
+          <Route path="/inventory/retail-invoice" element={<RetailInvoice />} />
+          <Route path="/inventory/sales/service-bill" element={<SalesServiceBill />} />
+          <Route path="/inventory/stock-management/opening-stock" element={<OpeningStock />} />
+          <Route path="/inventory/stock-management/physical-stock" element={<PhysicalStock />} />
+          <Route path="/inventory/stock-management/item-transfer-request" element={<ItemTransferRequest />} />
+          <Route path="/inventory/stock-management/item-transfer-approval" element={<ItemTransferApproval />} />
 
         </Route>
         
