@@ -221,6 +221,16 @@ export default function ContraEntry() {
     }));
   };
 
+  // ── Called by CreateContraEntry after a successful save ───────────────────
+  const handleEntrySaved = () => {
+    setView("list");
+    dispatch(fetchContraDetailsByDate({
+      fromDate,
+      toDate,
+      searchStr: selectedItem || undefined,
+    }));
+  };
+
   // ── Row actions ────────────────────────────────────────────────────────────
   const handleView = (row: any) => navigate(`/accounts/contra-entry/${row.VoucherNo}`);
   const handleEdit = (row: any) => navigate(`/accounts/contra-entry/edit/${row.VoucherNo}`);
@@ -238,7 +248,7 @@ export default function ContraEntry() {
 
   // ── Render CreateContraEntry inline when view === "create" ─────────────────
   if (view === "create") {
-    return <CreateContraEntry onBack={() => setView("list")} />;
+    return <CreateContraEntry onBack={() => setView("list")} onSaved={handleEntrySaved} />;
   }
 
   return (

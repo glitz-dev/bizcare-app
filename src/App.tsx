@@ -28,6 +28,16 @@ import MaterialReceive from './pages/stock management/MaterialReceive'
 import BarcodePrint from './pages/stock management/BarcodePrint'
 import JournalVoucher from './pages/Accounts/Accounts-sub/General/JournalVoucher'
 import ContraEntry from './pages/Accounts/Accounts-sub/General/ContraDetails'
+import PaymentEntry from './pages/Accounts/Accounts-sub/General/Paymententry'
+import ReceiptEntry from './pages/Accounts/Accounts-sub/General/ReceiptEntry'
+import ChartOfAccounts from './pages/Accounts/Accounts-sub/General/ChartofAccounts'
+import BankReconciliationPage from './pages/Accounts/Accounts-sub/Accounts-Tools/BankReconciliation'
+import SupplierPaymentEntryPage from './pages/Accounts/Accounts-sub/Accounts-Tools/SupplierPaymentEntry'
+import CustomerReceiptEntry from './pages/Accounts/Accounts-sub/Accounts-Tools/CustomerReceiptEntry'
+import { TrialBalance } from './pages/Accounts/Reports/Trialbalance'
+import ProfitAndLoss from './pages/Accounts/Reports/Profitandloss'
+import BalanceSheet from './pages/Accounts/Reports/BalanceSheet'
+import GoodsReceipt from './pages/procurement/Goodsreceipt'
 
 const App = () => {
   return (
@@ -46,6 +56,7 @@ const App = () => {
           <Route path="/Inventory/indentdetail" element ={<PurchaseIndent />} />
           <Route path="/Inventory/purchase-order" element ={<PurchaseOrder />} />
           <Route path="/Inventory/purchase" element={<Purchase />} />
+          <Route path="/Inventory/goods-receipt" element={<GoodsReceipt />} />
           <Route path="/Inventory/purchase-return" element={<PurchaseReturn />} />
           <Route path="/Inventory/service-bill" element={<ServiceBill />} />
           <Route path="/inventory/salesquotationdetail" element={<SalesQuotation />} />
@@ -64,6 +75,15 @@ const App = () => {
           <Route path="/inventory/stock-management/barcode-print" element={<BarcodePrint />} />
           <Route path="/Accounts/accounts/journal-voucher" element={<JournalVoucher />} />
           <Route path="/Accounts/accounts/contra-entry" element={<ContraEntry />} />  
+          <Route path="/Accounts/accounts/payment-entry" element={<PaymentEntry />} />  
+          <Route path="/Accounts/accounts/receipt-entry" element={<ReceiptEntry/>} />  
+          <Route path="/Accounts/accounts/chart-account" element={<ChartOfAccounts />} />  
+          <Route path="/Accounts/accounts/bank-reconciliation" element={<BankReconciliationPage />} />
+          <Route path="/Accounts/accounts/supplier-payment-entry" element={<SupplierPaymentEntryPage />} />
+          <Route path="/Accounts/accounts/customer-receipt-entry" element={<CustomerReceiptEntry />} />
+          <Route path="/Accounts/reports/trial-balance" element={<TrialBalance />} />
+          <Route path="/Accounts/reports/profit-and-loss" element={<ProfitAndLoss />} />
+          <Route path="/Accounts/reports/balance-sheet" element={<BalanceSheet />} />
         </Route>
         
         {/* 404 Route */}

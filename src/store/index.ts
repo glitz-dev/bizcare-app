@@ -18,6 +18,15 @@ import itemTransferApprovalReducer from './features/inventory/stockManagement/it
 import materialIssueDetailReducer from './features/inventory/stockManagement/materialIssueDetailSlice';
 import journalVoucherReducer from './features/Accounts/accounts/journalVoucherSlice';
 import contraEntryReducer from './features/Accounts/accounts/contraEntrySlice';
+import paymentVoucherReducer from './features/Accounts/accounts/paymentVoucherSlice';
+import receiptVoucherReducer from './features/Accounts/accounts/receiptVoucherSlice';
+import chartAccountReducer from './features/Accounts/accounts/chartAccountsSlice';
+import supplierPaymentReducer from './features/Accounts/accounts/SupplierpaymentSlice';
+import customerReceiptReducer from './features/Accounts/accounts/CustomerreceiptSlice';
+import trialBalanceReducer from './features/Accounts/reports/trialbalanceSlice';
+import profitAndLossReducer from './features/Accounts/reports/profitandlossSlice';
+import balanceSheetReducer from './features/Accounts/reports/balanceSheetSlice';
+import goodsReceiptReducer from './features/inventory/procurement/goodsreceiptSlice';
 
 export const store = configureStore({
   reducer: {
@@ -40,9 +49,18 @@ export const store = configureStore({
     materialIssueDetail: materialIssueDetailReducer,
     journalVoucher: journalVoucherReducer,
     contraEntry: contraEntryReducer,
+    paymentVoucher: paymentVoucherReducer,
+    receiptVoucher: receiptVoucherReducer,
+    chartAccount: chartAccountReducer,
+    supplierPayment: supplierPaymentReducer,
+    customerReceipt: customerReceiptReducer,
+    trialBalance: trialBalanceReducer, 
+    profitAndLoss: profitAndLossReducer,
+    balanceSheet: balanceSheetReducer,
+    goodsReceipt: goodsReceiptReducer,
 
   },
-});
+}); 
 
 // TypeScript helpers
 export type RootState = ReturnType<typeof store.getState>;

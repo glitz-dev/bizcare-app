@@ -618,17 +618,19 @@ export const fetchContraDetailsByDate = createAsyncThunk<
         const finYearId = params.finYearId ?? 2;
         const rowsPerPage = params.rowsPerPage ?? 25;
         const currentPage = params.currentPage ?? 1;
-        const searchStr = params.searchStr ?? "";
+        const searchStr = params.searchStr ?? "Not Approved";
 
         try {
-            const url = new URL("https://erp.glitzit.com/service/api/ContraVoucher/GetDetailsByDate");
-            url.searchParams.set("FromDate", params.fromDate);
-            url.searchParams.set("ToDate", params.toDate);
-            url.searchParams.set("rowsPerPage", String(rowsPerPage));
-            url.searchParams.set("currentPage", String(currentPage));
-            url.searchParams.set("searchStr", searchStr);
+            const qs = [
+                `FromDate=${encodeURIComponent(params.fromDate)}`,
+                `ToDate=${encodeURIComponent(params.toDate)}`,
+                `rowsPerPage=${encodeURIComponent(String(rowsPerPage))}`,
+                `currentPage=${encodeURIComponent(String(currentPage))}`,
+                `searchStr=${encodeURIComponent(searchStr)}`,
+            ].join("&");
+            const url = `https://erp.glitzit.com/service/api/ContraVoucher/GetDetailsByDate?${qs}`;
 
-            const response = await fetch(url.toString(), {
+            const response = await fetch(url, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
