@@ -11,7 +11,12 @@ import {
   fetchBankStartWith,
   fetchContraAcHeadStartWith,
   fetchAccountBalance,
+  saveContraVoucher,
+  clearSaveState,
+  type SaveContraVoucherPayload,
+  type ContraJournalLineItem,
 } from "../store/features/Accounts/accounts/contraEntrySlice";
+import { toast } from "sonner";
 import {
   ArrowLeftRight,
   Layers,
@@ -469,7 +474,10 @@ function ContraItemsTable({
 }
 
 // ─── CreateContraEntry ────────────────────────────────────────────────────────
-const CreateContraEntry: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
+const CreateContraEntry: React.FC<{ onBack?: () => void; onSaved?: () => void }> = ({
+  onBack,
+  onSaved,
+}) => {
   const dispatch = useDispatch<AppDispatch>();
   const hasMounted = useRef(false);
 
@@ -488,6 +496,7 @@ const CreateContraEntry: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     acHeadListLoading,
     accountBalance,
     accountBalanceLoading,
+    saveLoading,
   } = useSelector((state: RootState) => state.contraEntry);
 
   // ── Header field state ─────────────────────────────────────────────────────
@@ -604,6 +613,97 @@ const CreateContraEntry: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     setBankPaymentType(""); setBank("");
     setChequeDate(""); setChequeNo(""); setRemarks("");
     setRows([makeRow(1)]); nextId.current = 2;
+  };
+
+  // ── Submit: build payload, save, toast feedback ────────────────────────────
+  const handleSubmit = async () => {
+    // Guard: Dr/Cr must tally and be non-zero
+    if (!isTallied) {
+      toast.error("Dr. and Cr. amounts do not tally.");
+      return;
+    }
+    if (totalDr <= 0 || totalCr <= 0) {
+      toast.error("Total amount must be greater than zero.");
+      return;
+    }
+    if (!document_ || !bank) {
+      toast.error("Please select a Document and Bank before saving.");
+      return;
+    }
+
+    const selectedDoc = documentList.find((d) => String(d.DocumentID) === document_);
+    const selectedBank = bankList.find((b) => String(b.BankID) === bank);
+    const currencyLabel =
+      currencyList.find((c) => String(c.CurrencyID) === currency)?.Currency ??
+      (companyCurrency && String(companyCurrency.CurrencyID) === currency
+        ? companyCurrency.Currency
+        : "Rupees");
+
+    const lstAccJournalT: ContraJournalLineItem[] = rows
+      .filter((r) => r.accountHead)
+      .map((r) => {
+        const head = acHeadList.find((h) => String(h.CvHeadID) === r.accountHead);
+        return {
+          HeadName: head?.CvHeadName ?? "",
+          HeadID: Number(r.accountHead),
+          CurrentBal: r.currentBalance,
+          DebitAmount: parseFloat(r.debitAmount) || 0,
+          CreditAmount: parseFloat(r.creditAmount) || 0,
+        };
+      });
+
+    const now = new Date(voucherDate);
+    const voucherDateISO = isNaN(now.getTime())
+      ? new Date().toISOString()
+      : now.toISOString();
+    const voucherDateStr = voucherDate
+      ? voucherDate.split("-").reverse().join("-") 
+      : "";
+
+    const payload: SaveContraVoucherPayload = {
+      VoucherDateStr: voucherDateStr,
+      VoucherDate: voucherDateISO,
+      VoucherNo: voucherNo,
+      DocumentID: Number(document_),
+      DocumentName: selectedDoc?.DocumentName ?? "",
+      CurrencyID: Number(currency),
+      Currency: currencyLabel,
+      ExchRate: parseFloat(exchangeRate) || 1,
+      BankID: Number(bank),
+      BankName: selectedBank?.BankName ?? "",
+      BankPaymentType: {
+        Id: 0,
+        Title: bankPaymentType,
+      },
+      BankReceiptTypeID: 0,
+      ChequeDate: chequeDate || null,
+      Type: "Normal",
+      TypeName: { id: 0, name: "Normal" },
+      VoucherAmount: fmt(totalDr),
+      SettledAmount: fmt(totalDr),
+      Settled: true,
+      IsJournalOrContra: false,
+      LstAccJournalT: lstAccJournalT,
+    };
+
+    try {
+      const result = await dispatch(saveContraVoucher({ payload })).unwrap();
+      toast.success(
+        result.MessageId
+          ? `Contra voucher ${result.MessageId} saved successfully.`
+          : result.Message || "Contra voucher saved successfully."
+      );
+      dispatch(clearSaveState());
+      handleClear();
+      if (onSaved) {
+        onSaved();
+      } else if (onBack) {
+        onBack();
+      }
+    } catch (err) {
+      const message = typeof err === "string" ? err : "Failed to save contra voucher.";
+      toast.error(message);
+    }
   };
 
   // ── Derived dropdown options ───────────────────────────────────────────────
@@ -911,11 +1011,17 @@ const CreateContraEntry: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
             Clear
           </button>
           <button
-            className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90"
+            onClick={handleSubmit}
+            disabled={saveLoading || !isTallied}
+            className="flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all hover:shadow-xl hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             style={{ background: BRAND }}
           >
-            <Save size={15} />
-            Submit
+            {saveLoading ? (
+              <RefreshCw size={15} className="animate-spin" />
+            ) : (
+              <Save size={15} />
+            )}
+            {saveLoading ? "Saving…" : "Submit"}
           </button>
         </div>
 

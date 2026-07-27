@@ -676,7 +676,7 @@ export const fetchVoucherDetails = createAsyncThunk<
             url.searchParams.set("currentPage", String(params.currentPage ?? 1));
 
             if (params.searchStr) {
-                url.searchParams.set("searchStr", params.searchStr);
+                url.searchParams.set("searchStr", params.searchStr ?? "Not Approved");
             }
 
             const response = await fetch(url.toString(), {
