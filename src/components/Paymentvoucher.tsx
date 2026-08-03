@@ -23,7 +23,6 @@ import {
   Building2,
   Tag,
   BarcodeIcon,
-  FileSearch,
   CalendarDays,
   X,
   Wallet,

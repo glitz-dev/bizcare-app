@@ -263,7 +263,7 @@ const SupplierPaymentDetails = ({ onBack }: { onBack?: () => void }) => {
   const [bankRefNo, setBankRefNo] = useState("");
   const [neftRtgsNo, setNeftRtgsNo] = useState("");
   const [transactionId, setTransactionId] = useState("");
-  const [payableAmount, setPayableAmount] = useState("0");
+  const [payableAmount] = useState("0");
 
   const [settledAmount, setSettledAmount] = useState("0.00");
   const [ledgerBalance, setLedgerBalance] = useState("");

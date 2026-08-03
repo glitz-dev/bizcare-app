@@ -27,6 +27,10 @@ import trialBalanceReducer from './features/Accounts/reports/trialbalanceSlice';
 import profitAndLossReducer from './features/Accounts/reports/profitandlossSlice';
 import balanceSheetReducer from './features/Accounts/reports/balanceSheetSlice';
 import goodsReceiptReducer from './features/inventory/procurement/goodsreceiptSlice';
+import organizationReducer from './features/settings/organizationSlice';
+import branchReducer from './features/settings/branchSlice';
+import financialYearReducer from './features/settings/financialyearSlice';
+import currencyReducer from './features/settings/currencySlice';  
 
 export const store = configureStore({
   reducer: {
@@ -58,6 +62,10 @@ export const store = configureStore({
     profitAndLoss: profitAndLossReducer,
     balanceSheet: balanceSheetReducer,
     goodsReceipt: goodsReceiptReducer,
+    organization: organizationReducer,
+    branch: branchReducer,
+    financialYear: financialYearReducer,
+    currency: currencyReducer,
 
   },
 }); 

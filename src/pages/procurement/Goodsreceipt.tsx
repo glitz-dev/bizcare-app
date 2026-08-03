@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { Column } from "react-data-grid";
 import { PackageCheck } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState, AppDispatch } from "@/store"; // Adjust path as needed
 
 // Import your existing common UI components
 import { PageHeader } from "../../common/PageHeader";
@@ -16,6 +18,12 @@ import {
 
 // Import CreateGoodsreceipt Component
 import { CreateGoodsreceipt } from "../../components/CreateGoodsreceipt"; // Adjust path as needed
+
+// Import the goods receipt slice (thunk + item type)
+import {
+  fetchGoodsReceiptList,
+  type GoodsReceiptListItem,
+} from "../../store/features/inventory/procurement/goodsreceiptSlice"; // Adjust path as needed
 
 // Sample Type definition based on legacy grid columns
 export interface GoodsReceiptRow {
@@ -36,43 +44,46 @@ export interface GoodsReceiptRow {
   purchaseOrderNo: string;
 }
 
-// Sample Data
-const MOCK_DATA: GoodsReceiptRow[] = [
-  {
-    receiptId: "1",
-    goodsReceiptNo: "GR-2026-001",
-    date: "2026-07-20",
-    documentNo: "DOC-8941",
-    supplier: "Acme Industrial Supplies",
-    amount: 12500.0,
-    status: "Approved",
-    createdDate: "2026-07-20",
-    approvedBy: "John Doe",
-    against: "PO-4501",
-    approvedDate: "2026-07-21",
-    receivedAt: "Main Warehouse",
-    supplierBillNo: "INV-9901",
-    createdBy: "Alice Smith",
-    purchaseOrderNo: "PO-4501",
-  },
-  {
-    receiptId: "2",
-    goodsReceiptNo: "GR-2026-002",
-    date: "2026-07-22",
-    documentNo: "DOC-8942",
-    supplier: "Apex Global Trading",
-    amount: 4350.5,
-    status: "Pending",
-    createdDate: "2026-07-22",
-    approvedBy: "-",
-    against: "PO-4508",
-    approvedDate: "-",
-    receivedAt: "Dock B",
-    supplierBillNo: "INV-7732",
-    createdBy: "Bob Johnson",
-    purchaseOrderNo: "PO-4508",
-  },
-];
+// ─── Date Helpers ─────────────────────────────────────────────────────────────
+// PageFilters works with "YYYY-MM-DD" (native <input type="date"> format), but
+// the GetInPasssDetails API expects "DD-MM-YYYY" for From/To.
+const toApiDate = (isoDate: string): string => {
+  if (!isoDate) return "";
+  const [year, month, day] = isoDate.split("-");
+  if (!year || !month || !day) return isoDate;
+  return `${day}-${month}-${year}`;
+};
+
+// ─── API → Row Mapper ───────────────────────────────────────────────────────
+// Converts a raw GetInPasssDetails record into the row shape the grid expects.
+const mapListItemToRow = (item: GoodsReceiptListItem): GoodsReceiptRow => {
+  let status: GoodsReceiptRow["status"] = "Created";
+  if (item.Approved) {
+    status = "Approved";
+  } else if (item.Approve && item.Approve.toLowerCase().includes("reject")) {
+    status = "Rejected";
+  } else if (item.Approve) {
+    status = "Pending";
+  }
+
+  return {
+    receiptId: String(item.InPassID),
+    goodsReceiptNo: item.InPassNo,
+    date: item.InPassDate,
+    documentNo: item.DocumentName,
+    supplier: item.Supplier,
+    amount: item.NetAmount,
+    status,
+    createdDate: item.CreatedDate,
+    approvedBy: item.ApprovedBy ?? "-",
+    against: item.Against,
+    approvedDate: item.ApprovedDate ?? "-",
+    receivedAt: item.ReceivedAt ?? "-",
+    supplierBillNo: item.BillNo ?? "-",
+    createdBy: item.CreatedBy ?? "-",
+    purchaseOrderNo: item.OrderNo ?? "-",
+  };
+};
 
 export default function GoodsReceipt() {
   // ─── View Toggle State ──────────────────────────────────────────────────────
@@ -82,9 +93,20 @@ export default function GoodsReceipt() {
   const [fromDate, setFromDate] = useState("2026-07-20");
   const [toDate, setToDate] = useState("2026-08-19");
   const [selectedItem, setSelectedItem] = useState("");
-  
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<GoodsReceiptRow[]>(MOCK_DATA);
+
+  // ─── Redux Wiring ───────────────────────────────────────────────────────────
+  const dispatch = useDispatch<AppDispatch>();
+  const {
+    goodsReceiptListList,
+    goodsReceiptListLoading,
+    goodsReceiptListError,
+  } = useSelector((state: RootState) => state.goodsReceipt);
+
+  const loading = goodsReceiptListLoading;
+  const rows = useMemo<GoodsReceiptRow[]>(
+    () => goodsReceiptListList.map(mapListItemToRow),
+    [goodsReceiptListList]
+  );
 
   // Sample items list for PageFilters dropdown
   const sampleItems = [
@@ -97,7 +119,7 @@ export default function GoodsReceipt() {
   const handleView = (row: GoodsReceiptRow) => console.log("View:", row);
   const handleEdit = (row: GoodsReceiptRow) => console.log("Edit:", row);
   const handleDelete = (row: GoodsReceiptRow) => console.log("Delete:", row);
-  
+
   const handleCreateNew = () => {
     setShowCreateForm(true);
   };
@@ -107,12 +129,26 @@ export default function GoodsReceipt() {
   };
 
   const handleSearch = () => {
-    setLoading(true);
-    // Simulate API fetch delay
-    setTimeout(() => {
-      setLoading(false);
-    }, 500);
+    dispatch(
+      fetchGoodsReceiptList({
+        from: toApiDate(fromDate),
+        to: toApiDate(toDate),
+        currentPage: 1,
+        rowsPerPage: 25,
+        searchStr: "",
+      })
+    );
   };
+
+  // Fetch on mount using the initial date range. Guarded with a ref so
+  // React 18 Strict Mode's double-invoke in dev doesn't fire the request twice.
+  const fetchedRef = useRef(false);
+  useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── DataGrid Columns ───────────────────────────────────────────────────────
   const columns = useMemo<Column<GoodsReceiptRow>[]>(
@@ -291,7 +327,14 @@ export default function GoodsReceipt() {
           onSearch={handleSearch}
         />
 
-        {/* 3. Modernized Data Grid */}
+        {/* 3. Error Banner */}
+        {goodsReceiptListError && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+            {goodsReceiptListError}
+          </div>
+        )}
+
+        {/* 4. Modernized Data Grid */}
         <DataTable
           columns={columns}
           rows={rows}

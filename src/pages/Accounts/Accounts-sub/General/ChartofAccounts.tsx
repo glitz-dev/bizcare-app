@@ -1861,15 +1861,6 @@ export default function ChartOfAccounts() {
     [accHeadsForOpeningList, removedHeadIds]
   );
 
-  const totals = useMemo(
-    () =>
-      ledgerRows.reduce(
-        (acc, r) => ({ credit: acc.credit + r.credit, debit: acc.debit + r.debit }),
-        { credit: 0, debit: 0 }
-      ),
-    [ledgerRows]
-  );
-
   const columns: Column<LedgerRow>[] = [
     { key: "slNo", name: "Sl No.", width: 64 },
     { key: "code", name: "Code", width: 110 },

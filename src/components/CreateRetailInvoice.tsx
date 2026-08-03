@@ -731,7 +731,7 @@ interface CreateRetailInvoiceProps {
 
 const CreateRetailInvoice: React.FC<CreateRetailInvoiceProps> = ({ onBack, onSaveSuccess }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { documentMasters, documentMastersLoading, invoiceTaxTypes, invoiceTaxTypesLoading, paymentTypes, paymentTypesLoading, defaultStores, defaultStoresLoading, gstTypes, gstTypesLoading, customers, customersLoading, stores, storesLoading, defaultStates, states, statesLoading, productDetails, productDetailsLoading, saveRetailInvoiceLoading, currencies, currenciesLoading, currencyExRateLoading } = useSelector(
+  const { documentMasters, documentMastersLoading, invoiceTaxTypes, invoiceTaxTypesLoading, paymentTypes, paymentTypesLoading, defaultStores, gstTypes, gstTypesLoading, customers, customersLoading, stores, storesLoading, defaultStates, states, statesLoading, productDetails, productDetailsLoading, saveRetailInvoiceLoading, currencies, currenciesLoading, currencyExRateLoading } = useSelector(
     (state: RootState) => state.retailInvoice
   );
 

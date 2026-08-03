@@ -37,7 +37,7 @@ function buildColumns(
   onEdit: (row: any) => void,
   onDelete: (row: any) => void
 ): Column<any>[] {
-  const fh = (col: Column<any>) => (props: any) => (
+  const fh = (col: Column<any>) => () => (
     <FilterHeader
       column={col}
       filterValue={filters[col.key as string] ?? ""}

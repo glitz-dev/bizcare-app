@@ -502,7 +502,8 @@ const CreateContraEntry: React.FC<{ onBack?: () => void; onSaved?: () => void }>
   // ── Header field state ─────────────────────────────────────────────────────
   const [document_,       setDocument_]       = useState("");
   const [voucherNo,       setVoucherNo]       = useState("");
-  const [voucherType,     setVoucherType]     = useState("");
+  const [voucherType,     setVoucherType]     = useState("Normal");
+  void voucherType;
   const [voucherDate,     setVoucherDate]     = useState(
     new Date().toISOString().slice(0, 10)
   );

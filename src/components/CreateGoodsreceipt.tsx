@@ -16,7 +16,6 @@ import {
     checkSupplyInvoiceExist,
     saveGoodsReceipt,
     type ItemDetailItem,
-    type ItemUnitItem,
     type SaveGoodsReceiptPayload,
     type SaveInPassDetailLine,
 } from "../store/features/inventory/procurement/goodsreceiptSlice"; 
@@ -40,14 +39,12 @@ import {
     Plus,
     X,
     Trash2,
-    RefreshCcw,
     FileText,
     Hash,
     Calendar,
     Tag,
     Layers,
     User,
-    Building2,
     MessageSquare,
     Package,
     Ruler,
@@ -56,10 +53,8 @@ import {
     Save,
     ChevronsUpDown,
     Check,
-    Truck,
     Receipt,
     DollarSign,
-    ArrowLeft,
     PackageCheck,
     Clock,
     Store,
@@ -932,12 +927,45 @@ export function CreateGoodsreceipt({ onClose }: CreateGoodsReceiptProps) {
 
             // 2. Build the save payload from current header + line state.
             const master = selectedPurchaseOrderForInPassList[0];
+            if (!master) {
+                setSubmitError("Purchase order details haven't finished loading yet. Please wait a moment and try again.");
+                setIsSubmitting(false);
+                return;
+            }
+
             const supplier = supplierJobWorkerList.find((s) => String(s.SupplierID) === supplierJobworker);
             const store =
                 companyStoreList.find((s) => s.StoreName === receivedAt) ??
                 userFormWiseStoreList.find((s) => s.StoreName === receivedAt);
             const doc = documentStartWithList.find((d) => d.DocumentName === documentType);
+            if (!doc) {
+                setSubmitError("Document type details haven't finished loading yet. Please wait a moment and try again.");
+                setIsSubmitting(false);
+                return;
+            }
             const inPassDoc = inPassAgainstDocList[0];
+            if (!inPassDoc) {
+                setSubmitError('"Against" document details haven\'t finished loading yet. Please wait a moment and try again.');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Every line submitted must be one of the PO's actual detail lines —
+            // its POTID has to match a real PurchaseOrderDetail row on the server,
+            // or the backend can't resolve "entity" for that line and throws
+            // "Value cannot be null. Parameter name: entity". A row added via
+            // "Add Line Item" (not prefilled from the selected PO) carries a
+            // locally-generated id instead of a real POTID, so catch that here
+            // rather than letting it reach the API.
+            const validPOTIDs = new Set((master.LstInPassDetails ?? []).map((d) => d.POTID));
+            const invalidLine = validLines.find((l) => !validPOTIDs.has(l.id));
+            if (invalidLine) {
+                setSubmitError(
+                    `"${invalidLine.item || "A manually added line"}" isn't one of the selected purchase order's items and can't be submitted.`
+                );
+                setIsSubmitting(false);
+                return;
+            }
 
             const now = new Date();
             const nowTime = now.toTimeString().slice(0, 8); // "HH:MM:SS"
@@ -1041,6 +1069,8 @@ export function CreateGoodsreceipt({ onClose }: CreateGoodsReceiptProps) {
             };
 
             // 3. Save.
+            // eslint-disable-next-line no-console
+            console.debug("[GoodsReceipt] SaveChanges payload:", payload);
             await dispatch(saveGoodsReceipt({ payload })).unwrap();
 
             handleClear();
