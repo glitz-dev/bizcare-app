@@ -422,6 +422,36 @@ export interface ReceiptItemRow {
     damaged: boolean;
 }
 
+// GET /InPass/GetInPasssDetails?From=...&To=...&currentPage=...&rowsPerPage=...&searchStr=...
+// Returns an envelope-wrapped array; paginated grid/list of goods receipts (InPass).
+export interface GoodsReceiptListItem {
+    rowAscNum: number;
+    rowDescNum: number;
+    InPassID: number;
+    InPassNo: string;
+    InPassDate: string;
+    SupplierID: number;
+    Supplier: string;
+    Against: string;
+    ReceivedAt: string | null;
+    Through: string | null;
+    NetAmount: number;
+    ApprovedBy: string | null;
+    BillNo: string | null;
+    OrderNo: string | null;
+    Approve: string | null;
+    QCApprove: string | null;
+    QCApprovedBy: string | null;
+    CreatedBy: string | null;
+    DocumentName: string;
+    PurchaseEntry: boolean;
+    CreatedDate: string;
+    ApprovedDate: string | null;
+    Approved: boolean;
+    MobileNo: string | null;
+    QCApprovedDate: string | null;
+}
+
 export interface ApiResponseWrapper<T> {
     Server: {
         Success: boolean;
@@ -529,6 +559,16 @@ export interface SaveGoodsReceiptParams {
     finYearId?: number;            // default 2
 }
 
+export interface FetchGoodsReceiptListParams {
+    from: string;                  // DD-MM-YYYY, e.g. "28-06-2020"
+    to: string;                    // DD-MM-YYYY, e.g. "28-07-2026"
+    currentPage?: number;          // default 1
+    rowsPerPage?: number;          // default 25
+    searchStr?: string;            // default ""
+    companyId?: number;            // default 1
+    finYearId?: number;            // default 2
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 
 export interface GoodsReceiptState {
@@ -593,6 +633,10 @@ export interface GoodsReceiptState {
     saveGoodsReceiptResult: SaveGoodsReceiptResult | null;
     saveGoodsReceiptLoading: boolean;
     saveGoodsReceiptError: string | null;
+
+    goodsReceiptListList: GoodsReceiptListItem[];
+    goodsReceiptListLoading: boolean;
+    goodsReceiptListError: string | null;
 }
 
 // ─── Initial State ────────────────────────────────────────────────────────────
@@ -659,6 +703,10 @@ const initialState: GoodsReceiptState = {
     saveGoodsReceiptResult: null,
     saveGoodsReceiptLoading: false,
     saveGoodsReceiptError: null,
+
+    goodsReceiptListList: [],
+    goodsReceiptListLoading: false,
+    goodsReceiptListError: null,
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -1320,6 +1368,55 @@ export const saveGoodsReceipt = createAsyncThunk<
     }
 );
 
+// 16. GetInPasssDetails — envelope-wrapped array; paginated list of goods receipts
+export const fetchGoodsReceiptList = createAsyncThunk<
+    GoodsReceiptListItem[],
+    FetchGoodsReceiptListParams,
+    { state: RootState; rejectValue: string }
+>(
+    "goodsReceipt/fetchGoodsReceiptList",
+    async (params, { rejectWithValue, getState }) => {
+        const token = getCleanToken(getState());
+        if (!token) return rejectWithValue("No authentication token found. Please login again.");
+
+        const companyId = params.companyId ?? 1;
+        const finYearId = params.finYearId ?? 2;
+        const currentPage = params.currentPage ?? 1;
+        const rowsPerPage = params.rowsPerPage ?? 25;
+        const searchStr = params.searchStr ?? "";
+
+        try {
+            const url = `https://erp.glitzit.com/service/api/InPass/GetInPasssDetails?From=${encodeURIComponent(
+                params.from
+            )}&To=${encodeURIComponent(
+                params.to
+            )}&currentPage=${currentPage}&rowsPerPage=${rowsPerPage}&searchStr=${encodeURIComponent(searchStr)}`;
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token,
+                    "x-company-id": String(companyId),
+                    "x-finyear-id": String(finYearId),
+                },
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const json: ApiResponseWrapper<GoodsReceiptListItem[]> = await response.json();
+
+            if (json.Server?.Success) {
+                return json.Server.Data ?? [];
+            } else {
+                return rejectWithValue(json.Server?.Message || "Failed to fetch goods receipt list.");
+            }
+        } catch (err: unknown) {
+            return rejectWithValue(err instanceof Error ? err.message : "Network error");
+        }
+    }
+);
+
 // ─── Slice ────────────────────────────────────────────────────────────────────
 
 const goodsReceiptSlice = createSlice({
@@ -1394,6 +1491,10 @@ const goodsReceiptSlice = createSlice({
         clearSaveGoodsReceipt(state) {
             state.saveGoodsReceiptResult = null;
             state.saveGoodsReceiptError = null;
+        },
+        clearGoodsReceiptList(state) {
+            state.goodsReceiptListList = [];
+            state.goodsReceiptListError = null;
         },
         resetGoodsReceipt() {
             return initialState;
@@ -1627,6 +1728,20 @@ const goodsReceiptSlice = createSlice({
             .addCase(saveGoodsReceipt.rejected, (state, action) => {
                 state.saveGoodsReceiptLoading = false;
                 state.saveGoodsReceiptError = action.payload ?? "Unknown error";
+            })
+
+            // GetInPasssDetails
+            .addCase(fetchGoodsReceiptList.pending, (state) => {
+                state.goodsReceiptListLoading = true;
+                state.goodsReceiptListError = null;
+            })
+            .addCase(fetchGoodsReceiptList.fulfilled, (state, action) => {
+                state.goodsReceiptListLoading = false;
+                state.goodsReceiptListList = action.payload;
+            })
+            .addCase(fetchGoodsReceiptList.rejected, (state, action) => {
+                state.goodsReceiptListLoading = false;
+                state.goodsReceiptListError = action.payload ?? "Unknown error";
             });
     },
 });
@@ -1650,6 +1765,7 @@ export const {
     clearReceiptItems,
     clearSupplyInvoiceExist,
     clearSaveGoodsReceipt,
+    clearGoodsReceiptList,
     resetGoodsReceipt,
 } = goodsReceiptSlice.actions;
 

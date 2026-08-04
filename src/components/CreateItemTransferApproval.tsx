@@ -55,7 +55,6 @@ function makeEmptyRow(id: number): ApprovalLineItem {
 
 // ─── Mock options ──────────────────────────────────────────────────────────────
 const MOCK_TYPES = [{ label: "Internal Transfer", value: "internal" }];
-const MOCK_ITEMS = [{ label: "Item A", value: "ia" }, { label: "Item B", value: "ib" }];
 
 // ─── FieldLabel ────────────────────────────────────────────────────────────────
 function FieldLabel({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
@@ -474,8 +473,8 @@ const CreateItemTransferApproval: React.FC<{ onBack?: () => void; editRow?: Item
     const netQuantity = rows.reduce((sum, r) => sum + (parseFloat(r.aprQty) || 0), 0);
 
     // Keep fields evaluating to an empty string on layout mount so placeholders display correctly
-    const requestedToStoreLabel = requestedNo ? (selectedTransferRequests[0]?.RequestToStore ?? "") : "";
-    const requestedBranchLabel = requestedNo ? (selectedTransferRequests[0]?.ReqToBranch ?? "") : "";
+    const requestedToStoreLabel = requestedNo ? requestedToStore : "";
+    const requestedBranchLabel = requestedNo ? requestedBranch : "";
 
     // ── Toast feedback on save state changes ──────────────────────────────────
     useEffect(() => {

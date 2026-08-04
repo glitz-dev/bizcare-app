@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -332,13 +332,6 @@ const SPEC_OPTIONS: SelectOption[] = [
   { value: "SP1", label: "60 GSM" },
   { value: "SP2", label: "80 GSM" },
   { value: "SP3", label: "100 GSM" },
-];
-
-const UNIT_OPTIONS: SelectOption[] = [
-  { value: "MTR", label: "Metre" },
-  { value: "KG", label: "Kilogram" },
-  { value: "PCS", label: "Pieces" },
-  { value: "YD", label: "Yard" },
 ];
 
 const RATE_OPTIONS: SelectOption[] = [

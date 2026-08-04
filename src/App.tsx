@@ -38,6 +38,12 @@ import { TrialBalance } from './pages/Accounts/Reports/Trialbalance'
 import ProfitAndLoss from './pages/Accounts/Reports/Profitandloss'
 import BalanceSheet from './pages/Accounts/Reports/BalanceSheet'
 import GoodsReceipt from './pages/procurement/Goodsreceipt'
+import Organization from './pages/Settings/Organization'
+import Branch from './pages/Settings/Branch'
+import Financialyear from './pages/Settings/Finantialyear'
+import CounterCash from './pages/Settings/Countercash'
+import Currency from './pages/Settings/Currency'
+import Bank from './pages/Settings/Bank'
 
 const App = () => {
   return (
@@ -84,6 +90,12 @@ const App = () => {
           <Route path="/Accounts/reports/trial-balance" element={<TrialBalance />} />
           <Route path="/Accounts/reports/profit-and-loss" element={<ProfitAndLoss />} />
           <Route path="/Accounts/reports/balance-sheet" element={<BalanceSheet />} />
+          <Route path="/settings/organisation" element={<Organization />} />
+          <Route path="/settings/branch" element={<Branch />} />
+          <Route path="/settings/financial-year" element={<Financialyear />} />
+          <Route path="/settings/counter-cash" element={<CounterCash />} />
+          <Route path="/settings/currency" element={<Currency />} />
+          <Route path="/settings/bank" element={<Bank />} />
         </Route>
         
         {/* 404 Route */}

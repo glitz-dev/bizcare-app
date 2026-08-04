@@ -295,7 +295,6 @@ function CellInput({
 
 // ─── LineItemCombobox (item search inside table cells) ────────────────────────
 function LineItemCombobox({
-    value,
     displayLabel,
     options,
     loading,

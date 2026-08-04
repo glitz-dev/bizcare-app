@@ -24,11 +24,7 @@ import {
   Customer,
   BaseCurrency,
   CurrencyOption,
-  CurrencyExRate,
-  InvoiceTaxTypeDetail,
-  AllInvoiceTaxType,
   ServiceItem,
-  ItemDetailsWithTax,
 } from "../store/features/inventory/sales/salesServiceBillSlice";
 import {
   FileText,

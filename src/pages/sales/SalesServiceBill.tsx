@@ -169,6 +169,8 @@ function FiltersBar({
 
 // ─── PDF Action Button ────────────────────────────────────────────────────────
 function PdfCell({ row }: { row: any }) {
+    // mark row as used to avoid unused variable warning
+    void row;
     return (
         <Tooltip>
             <TooltipTrigger asChild>
