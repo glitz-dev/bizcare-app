@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Column } from "react-data-grid";
 import { Landmark, Search } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
 import { PageHeader } from "../../common/PageHeader";
 import { DataTable, StatusBadge, ActionsCell, FilterHeader } from "../../common/DataTable";
 import { Input } from "@/components/ui/input";
+import CreateBank from "../../components/Createbank";
 import {
   Select,
   SelectContent,
@@ -11,29 +13,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { AppDispatch, RootState } from "@/store";
+import {
+  fetchAllBanks,
+  checkBankDuplication,
+  fetchBank,
+  type BankDetail,
+} from "../../store/features/settings/bankSlice";
 
 // ─── Brand tokens (sourced from PageHeader.tsx) ────────────────────────────
 const BRAND = "#004687";
 
-// ─── Static demo data (UI only) ────────────────────────────────────────────
-interface BankRow {
-  id: number;
-  bank: string;
-  address: string;
-  status: "Active" | "InActive";
-}
-
-const BANK_ROWS: BankRow[] = [
-  { id: 1, bank: "New Bank44", address: "", status: "Active" },
-  { id: 2, bank: "testnew1", address: "", status: "Active" },
-  { id: 3, bank: "MANAPPURAM", address: "", status: "Active" },
-  { id: 4, bank: "NEW BANK3", address: "", status: "Active" },
-  { id: 5, bank: "NEW BANK2", address: "", status: "Active" },
-  { id: 6, bank: "New Bank", address: "", status: "Active" },
-];
-
 export default function Bank() {
   const [isCreating, setIsCreating] = useState(false);
+  const [editingBank, setEditingBank] = useState<BankDetail | null>(null);
+
+  const dispatch = useDispatch<AppDispatch>();
+  const { bankList } = useSelector((state: RootState) => state.bank);
+
+  useEffect(() => {
+    dispatch(fetchAllBanks());
+  }, [dispatch]);
+
+  const handleEdit = async (row: { id: number; bank: string }) => {
+    try {
+      await dispatch(
+        checkBankDuplication({ bankName: row.bank, bankId: row.id })
+      ).unwrap();
+
+      const bank = await dispatch(fetchBank({ bankId: row.id })).unwrap();
+
+      setEditingBank(bank);
+      setIsCreating(true);
+    } catch (err) {
+      console.error("Failed to load bank for edit:", err);
+    }
+  };
+
+  const rows = useMemo(
+    () =>
+      bankList.map((b) => ({
+        id: b.BankID,
+        bank: b.BankName,
+        address: b.Address ?? "",
+        status: b.Active,
+      })),
+    [bankList]
+  );
 
   const columns: Column<any>[] = useMemo(
     () => [
@@ -64,12 +90,25 @@ export default function Bank() {
         name: "Actions",
         width: 110,
         renderCell: ({ row }) => (
-          <ActionsCell row={row} onEdit={() => {}} onDelete={() => {}} />
+          <ActionsCell row={row} onEdit={() => handleEdit(row)} onDelete={() => {}} />
         ),
       },
     ],
-    []
+    [handleEdit]
   );
+
+  if (isCreating) {
+    return (
+      <CreateBank
+        editBank={editingBank}
+        onBack={() => {
+          setIsCreating(false);
+          setEditingBank(null);
+          dispatch(fetchAllBanks());
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -116,7 +155,7 @@ export default function Bank() {
           </div>
         </div>
 
-        <DataTable columns={columns} rows={BANK_ROWS} rowKey="id" />
+        <DataTable columns={columns} rows={rows} rowKey="id" />
       </div>
     </div>
   );
