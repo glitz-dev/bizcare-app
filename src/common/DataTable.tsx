@@ -136,6 +136,8 @@ export interface DataTableProps {
   loadingLabel?: string;
   rowHeight?: number;
   headerRowHeight?: number;
+  /** When set, DataTable paginates the (filtered) rows itself, showing this many per page. Omit to render all rows, unpaginated (existing behavior). */
+  pageSize?: number;
 }
 
 // ─── DataTable ────────────────────────────────────────────────────────────────
@@ -148,13 +150,20 @@ export function DataTable({
   loadingLabel = "Loading…",
   rowHeight = 36,
   headerRowHeight = 58,
+  pageSize,
 }: DataTableProps) {
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const [page, setPage] = useState(1);
 
-  const handleFilterChange = (key: string, value: string) =>
+  const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
 
-  const clearFilters = () => setFilters({});
+  const clearFilters = () => {
+    setFilters({});
+    setPage(1);
+  };
 
   const columnsWithFilters: Column<any>[] = useMemo(
     () =>
@@ -184,6 +193,15 @@ export function DataTable({
       ),
     [rows, filters]
   );
+
+  const totalPages = pageSize ? Math.max(1, Math.ceil(filteredRows.length / pageSize)) : 1;
+  const currentPage = Math.min(page, totalPages);
+
+  const pagedRows = useMemo(() => {
+    if (!pageSize) return filteredRows;
+    const start = (currentPage - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, pageSize, currentPage]);
 
   // Memoized rowClass for performance + !important to beat react-data-grid styles
   const getRowClass = useMemo(() => {
@@ -217,7 +235,7 @@ export function DataTable({
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
       <DataGrid
         columns={columnsWithFilters}
-        rows={filteredRows}
+        rows={pagedRows}
         rowKeyGetter={(row: any) => row[rowKey]}
         className="rdg"
         style={{ height: "auto", width: "100%" }}
@@ -230,22 +248,62 @@ export function DataTable({
       {/* Footer */}
       <div className="px-4 py-2.5 border-t border-slate-100 flex items-center justify-between">
         <p className="text-[11px] text-slate-400">
-          Showing{" "}
-          <span className="font-semibold text-slate-600">1–{filteredRows.length}</span>{" "}
-          of{" "}
-          <span className="font-semibold text-slate-600">{rows.length}</span> results
+          {pageSize && filteredRows.length > 0 ? (
+            <>
+              Showing{" "}
+              <span className="font-semibold text-slate-600">
+                {(currentPage - 1) * pageSize + 1}–
+                {Math.min(currentPage * pageSize, filteredRows.length)}
+              </span>{" "}
+              of <span className="font-semibold text-slate-600">{filteredRows.length}</span> results
+            </>
+          ) : (
+            <>
+              Showing{" "}
+              <span className="font-semibold text-slate-600">1–{filteredRows.length}</span>{" "}
+              of <span className="font-semibold text-slate-600">{rows.length}</span> results
+            </>
+          )}
         </p>
-        {Object.values(filters).some((v) => v) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearFilters}
-            className="h-7 text-xs flex items-center gap-1 text-slate-500 hover:text-slate-700"
-          >
-            <X size={13} />
-            Clear Filters
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {Object.values(filters).some((v) => v) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-7 text-xs flex items-center gap-1 text-slate-500 hover:text-slate-700"
+            >
+              <X size={13} />
+              Clear Filters
+            </Button>
+          )}
+          {pageSize && filteredRows.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs cursor-pointer"
+                disabled={currentPage === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Prev
+              </Button>
+              <span className="text-[11px] text-slate-400">
+                Page <span className="font-semibold text-slate-600">{currentPage}</span> of{" "}
+                <span className="font-semibold text-slate-600">{totalPages}</span>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs cursor-pointer"
+                disabled={currentPage === totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

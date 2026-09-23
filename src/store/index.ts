@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import type { Reducer } from 'redux';
 import authReducer from './features/auth/authSlice';
 import procurementReducer from './features/inventory/procurement/procurementSlice';
 import purchaseOrderReducer from './features/inventory/procurement/purchaseOrderSlice';
@@ -30,7 +31,20 @@ import goodsReceiptReducer from './features/inventory/procurement/goodsreceiptSl
 import organizationReducer from './features/settings/organizationSlice';
 import branchReducer from './features/settings/branchSlice';
 import financialYearReducer from './features/settings/financialyearSlice';
-import currencyReducer from './features/settings/currencySlice';  
+import currencyReducer from './features/settings/currencySlice'; 
+import bankReducer from './features/settings/bankSlice';
+import stateReducer from './features/settings/stateSlice'; 
+import taxCategoryReducer from './features/settings/taxcategorySlice';
+import partyReducer from './features/settings/systemsetup/partySlice';
+import documentReducer from './features/settings/systemsetup/documentSlice';
+import generalPreferenceReducer from './features/settings/systemsetup/generalpreferenceSlice';
+import employeeReducer from './features/settings/systemsetup/employeeSlice';
+import gstCategoryReducer from './features/settings/systemsetup/gstcategorySlice';
+import paymentTermsReducer from './features/settings/systemsetup/paymenttermsSlice';
+import countryReducer from './features/settings/systemsetup/countrySlice';
+import machineRegistrationReducer from './features/settings/systemsetup/machineregistrationSlice';
+import accountGroupReducer from './features/settings/financialsetup/accountgroupSlice';
+import accountHeadReducer from './features/settings/financialsetup/accountheadSlice';
 
 export const store = configureStore({
   reducer: {
@@ -66,7 +80,19 @@ export const store = configureStore({
     branch: branchReducer,
     financialYear: financialYearReducer,
     currency: currencyReducer,
-
+    bank: bankReducer,
+    state: stateReducer,
+    taxCategory: taxCategoryReducer, 
+    party: partyReducer,
+    document: documentReducer,
+    generalPreference: generalPreferenceReducer, 
+    employee: employeeReducer,
+    gstCategory: gstCategoryReducer as Reducer<any>,
+    paymentTerms: paymentTermsReducer as Reducer<any>,
+    country: countryReducer as Reducer<any>,
+    machineRegistration: machineRegistrationReducer as Reducer<any>, 
+    accountGroup: accountGroupReducer as Reducer<any>,
+    accountHead: accountHeadReducer as Reducer<any>,
   },
 }); 
 

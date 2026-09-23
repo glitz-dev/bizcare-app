@@ -44,6 +44,19 @@ import Financialyear from './pages/Settings/Finantialyear'
 import CounterCash from './pages/Settings/Countercash'
 import Currency from './pages/Settings/Currency'
 import Bank from './pages/Settings/Bank'
+import State from './pages/Settings/State'
+import TaxCategory from './pages/Settings/Taxcategory'
+import Party from './pages/Settings/Party'
+import Document from './pages/Settings/Document'
+import GeneralPreference from './pages/Settings/Generalpreference'
+import Employee from './pages/Settings/Employee'
+import GSTCategory from './pages/Settings/GSTCategory'
+import PaymentTerms from './pages/Settings/Paymentterms'
+import Country from './pages/Settings/Country'
+import MachineRegistration from './pages/Settings/Machineregistration'
+import Majorgroup from './pages/Settings/Majorgroup'
+import Accountgroup from './pages/Settings/Accountgroup'
+import { AccountHead } from './pages/Settings/Accounthead'
 
 const App = () => {
   return (
@@ -52,15 +65,15 @@ const App = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Navigate to="/login" />} />
-        
+
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/Inventory" element={<InventoryPage />} />
           <Route path="/Accounts" element={<Accounts />} />
           <Route path="/Settings" element={<SettingsPage />} />
           <Route path="/user" element={<UserPage />} />
-          <Route path="/Inventory/indentdetail" element ={<PurchaseIndent />} />
-          <Route path="/Inventory/purchase-order" element ={<PurchaseOrder />} />
+          <Route path="/Inventory/indentdetail" element={<PurchaseIndent />} />
+          <Route path="/Inventory/purchase-order" element={<PurchaseOrder />} />
           <Route path="/Inventory/purchase" element={<Purchase />} />
           <Route path="/Inventory/goods-receipt" element={<GoodsReceipt />} />
           <Route path="/Inventory/purchase-return" element={<PurchaseReturn />} />
@@ -80,10 +93,10 @@ const App = () => {
           <Route path="/inventory/stock-management/material-receive" element={<MaterialReceive />} />
           <Route path="/inventory/stock-management/barcode-print" element={<BarcodePrint />} />
           <Route path="/Accounts/accounts/journal-voucher" element={<JournalVoucher />} />
-          <Route path="/Accounts/accounts/contra-entry" element={<ContraEntry />} />  
-          <Route path="/Accounts/accounts/payment-entry" element={<PaymentEntry />} />  
-          <Route path="/Accounts/accounts/receipt-entry" element={<ReceiptEntry/>} />  
-          <Route path="/Accounts/accounts/chart-account" element={<ChartOfAccounts />} />  
+          <Route path="/Accounts/accounts/contra-entry" element={<ContraEntry />} />
+          <Route path="/Accounts/accounts/payment-entry" element={<PaymentEntry />} />
+          <Route path="/Accounts/accounts/receipt-entry" element={<ReceiptEntry />} />
+          <Route path="/Accounts/accounts/chart-account" element={<ChartOfAccounts />} />
           <Route path="/Accounts/accounts/bank-reconciliation" element={<BankReconciliationPage />} />
           <Route path="/Accounts/accounts/supplier-payment-entry" element={<SupplierPaymentEntryPage />} />
           <Route path="/Accounts/accounts/customer-receipt-entry" element={<CustomerReceiptEntry />} />
@@ -96,8 +109,21 @@ const App = () => {
           <Route path="/settings/counter-cash" element={<CounterCash />} />
           <Route path="/settings/currency" element={<Currency />} />
           <Route path="/settings/bank" element={<Bank />} />
+          <Route path="/settings/state" element={<State />} />
+          <Route path="/settings/tax-category" element={<TaxCategory />} />
+          <Route path="/settings/party" element={<Party />} />
+          <Route path="/settings/document" element={<Document />} />
+          <Route path="/settings/general-preferences" element={<GeneralPreference />} />
+          <Route path="/settings/employee" element={<Employee />} />
+          <Route path="/settings/gst-category" element={<GSTCategory />} />
+          <Route path="/settings/payment-terms" element={<PaymentTerms />} />
+          <Route path="/settings/country" element={<Country />} />
+          <Route path="/settings/machine-registration" element={<MachineRegistration />} />
+          <Route path="/settings/account-major-group" element={<Majorgroup />} />
+          <Route path="/settings/account-group" element={<Accountgroup />} />
+          <Route path="/settings/account-head" element={<AccountHead />} />
         </Route>
-        
+
         {/* 404 Route */}
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>
